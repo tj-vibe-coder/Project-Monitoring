@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project Updates Schedule</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            overflow-x: auto; /* Primary horizontal scroll for the whole table */
+        }
+
+        .table-container {
+            max-height: 75vh;
+            overflow-y: auto; /* Vertical scroll for table body */
+        }
+
+        table {
+            width: max-content; /* Allow table to be wider than container */
+            min-width: 100%;
+            border-collapse: collapse; /* Ensures borders are neat */
+        }
+
+        th, td {
+            text-align: center;
+            padding: 0.5rem; /* p-2 */
+            border: 1px solid #e5e7eb; /* gray-200 */
+            vertical-align: middle; /* Default alignment */
+        }
+
+        .dark th, .dark td {
+            border-color: #374151; /* slate-700 */
+        }
+
+        /* Sticky column styling */
+        th.sticky-col, td.sticky-col {
+            position: sticky;
+            z-index: 10;
+            background-color: #f9fafb; /* gray-50 */
+            white-space: nowrap; /* Keep project info, PIC on one line */
+        }
+
+        th.sticky-col-0, td.sticky-col-0 {
+            left: 0;
+        }
+        /* th.sticky-col-1 (Project Name) will have left set by JS */
+        /* th.sticky-col-2 (PIC) will have left set by JS */
+
+
+        .dark th.sticky-col, .dark td.sticky-col {
+            background-color: #1f2937; /* dark:bg-slate-800 */
+        }
+
+        /* Sticky Headers */
+        thead th {
+            position: sticky;
+            top: 0;
+            background-color: #f3f4f6; /* gray-100 */
+            z-index: 20; /* Above body, below month headers if they were separate */
+            white-space: nowrap; /* Keep date numbers on one line */
+        }
+
+        thead tr:first-child th { /* Month headers */
+            top: 0;
+            z-index: 30;
+            background-color: #e5e7eb; /* gray-200 */
+        }
+
+        thead tr:nth-child(2) th { /* Date numbers */
+            /* Height of month row + its border. Adjust if padding/border changes. */
+            top: calc(2.75rem + 1px); /* Assuming month row is approx 2.75rem high (py-3 + text) */
+            z-index: 25;
+            background-color: #f3f4f6; /* gray-100 */
+        }
+
+        .dark thead th {
+            background-color: #374151; /* dark:bg-slate-700 */
+        }
+
+        .dark thead tr:first-child th { /* Dark Month headers */
+            background-color: #4b5563; /* dark:bg-slate-600 */
+        }
+
+        .dark thead tr:nth-child(2) th { /* Dark Date numbers */
+            background-color: #374151; /* dark:bg-slate-700 */
+        }
+
+        /* Ensure sticky project columns are above other sticky headers */
+        th.sticky-col-0, th.sticky-col-1, th.sticky-col-2 {
+            z-index: 35 !important;
+        }
+
+        thead tr:first-child th.sticky-col-0,
+        thead tr:first-child th.sticky-col-1,
+        thead tr:first-child th.sticky-col-2 {
+            top: 0; /* First row of headers sticks to the very top */
+        }
+
+        thead tr:nth-child(2) th.sticky-col-0,
+        thead tr:nth-child(2) th.sticky-col-1,
+        thead tr:nth-child(2) th.sticky-col-2 {
+            top: calc(2.75rem + 1px); /* Second row of headers sticks below the first */
+        }
+
+        .weekend-column {
+            background-color: #fee2e2 !important; /* Light red for light mode */
+        }
+
+        .dark .weekend-column {
+            background-color: #450a0a !important; /* Darker red for dark mode */
+        }
+
+        .month-header-cell { /* Applied to TH for month name */
+            text-align: center;
+            font-weight: 600; /* semibold */
+            padding: 0.75rem 0.5rem; /* py-3 px-2 */
+        }
+
+        .date-cell {
+            min-width: 150px; /* Increased width for date cells */
+            height: 50px; /* Default height, JS can override to 'auto' */
+            vertical-align: top; /* Align content to top for lists */
+        }
+
+        .cell-content {
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            padding: 0.25rem;
+            box-sizing: border-box;
+            white-space: normal; /* Allow wrapping for updates */
+        }
+
+            .cell-content:hover {
+                background-color: #e0f2fe; /* light sky blue for hover */
+            }
+
+        .dark .cell-content:hover {
+            background-color: #0c4a6e; /* darker sky blue for hover */
+        }
+
+        .cell-content.editing {
+            padding: 0;
+        }
+
+        .cell-content textarea {
+            width: 100%;
+            height: 100%;
+            min-height: 48px; /* ensure textarea fills cell initially */
+            border: 1px solid #3b82f6; /* blue-500 */
+            resize: none;
+            padding: 0.25rem;
+            box-sizing: border-box;
+            font-size: 0.875rem; /* text-sm */
+            background-color: white;
+            color: #1f2937;
+            text-align: left; /* Textarea content should be left-aligned */
+        }
+
+        .dark .cell-content textarea {
+            background-color: #374151; /* slate-700 */
+            color: #e5e7eb; /* slate-200 */
+            border-color: #60a5fa; /* sky-400 */
+        }
+
+        .cell-content ul {
+            list-style-position: inside;
+            padding-left: 0.25rem; /* Small indent for bullets */
+            margin: 0;
+            text-align: left;
+        }
+
+        .cell-content li {
+            margin-bottom: 0.125rem; /* Small space between list items */
+        }
+
+        .status-message {
+            text-align: center;
+            padding: 1rem;
+            font-style: italic;
+            color: #6b7280; /* gray-500 */
+        }
+
+        .dark .status-message {
+            color: #9ca3af; /* dark:text-slate-400 */
+        }
+
+        .current-month-marker {
+            border-left: 2px solid #ef4444; /* red-500 */
+            border-right: 2px solid #ef4444; /* red-500 */
+        }
+
+        .dark .current-month-marker {
+            border-left: 2px solid #f87171; /* red-400 */
+            border-right: 2px solid #f87171; /* red-400 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-200 p-4 md:p-8">
+
+    <div class="container mx-auto max-w-full">
+        <header class="mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-sky-400">Project Updates Schedule</h1>
+            <div class="flex flex-wrap items-center space-x-2 sm:space-x-4">
+                <label for="yearSelector" class="text-sm font-medium text-gray-700 dark:text-slate-300">Year:</label>
+                <select id="yearSelector" class="form-select text-sm rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                    <!-- Options will be populated by JavaScript -->
+                </select>
+                <button id="goToCurrentMonthBtn" class="px-4 py-2 text-sm font-medium rounded-md bg-blue-500 hover:bg-blue-600 dark:bg-sky-500 dark:hover:bg-sky-600 text-white">Go to Current Month</button>
+                <button id="themeToggleBtn" class="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-400" title="Toggle Theme">
+                    <svg id="theme-icon-light" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    <svg id="theme-icon-dark" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="bg-white dark:bg-slate-800 shadow-lg rounded-lg border border-gray-200 dark:border-slate-700">
+            <div id="tableStatus" class="status-message p-4">Loading schedule...</div>
+            <div class="table-wrapper">
+                <div class="table-container">
+                    <table id="scheduleTable" class="w-full text-sm">
+                        <thead class="z-20">
+                            <!-- Header rows will be populated by JavaScript -->
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-slate-700">
+                            <!-- Project rows will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const yearSelector = document.getElementById('yearSelector');
+        const scheduleTable = document.getElementById('scheduleTable');
+        const tableHead = scheduleTable.querySelector('thead');
+        const tableBody = scheduleTable.querySelector('tbody');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const lightIcon = document.getElementById('theme-icon-light');
+        const darkIcon = document.getElementById('theme-icon-dark');
+        const tableStatusDiv = document.getElementById('tableStatus');
+        const goToCurrentMonthBtn = document.getElementById('goToCurrentMonthBtn');
+        const tableContainer = document.querySelector('.table-container');
+
+        const API_BASE_URL = '/api'; // Replace with your actual API base URL if needed
+        const PROJECTS_API = `${API_BASE_URL}/projects`;
+
+        let projectCellData = {};
+        let allProjects = [];
+        let currentlyEditingCellElement = null;
+
+        async function apiFetch(url, options = {}) {
+            const method = options.method || 'GET';
+            console.groupCollapsed(`🌐 API Fetch: ${method} ${url}`);
+            const startTime = performance.now();
+
+            const defaultHeaders = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            };
+            const token = localStorage.getItem('authToken');
+            if (token) {
+                defaultHeaders['Authorization'] = `Bearer ${token}`;
+            }
+
+            const config = {
+                ...options,
+                headers: { ...defaultHeaders, ...(options.headers || {}) }
+            };
+
+            if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
+                config.body = JSON.stringify(config.body);
+            } else if (config.body instanceof FormData) {
+                delete config.headers['Content-Type'];
+            }
+            // console.log("    - Fetch config:", config); // Verbose logging, can be removed
+
+            try {
+                const response = await fetch(url, config);
+                const duration = performance.now() - startTime;
+                console.log(`    - Response received: Status ${response.status} (${response.statusText}) in ${duration.toFixed(0)}ms`);
+
+                if (response.status === 401) {
+                    console.warn(`[apiFetch] Unauthorized access to ${url}.`);
+                    console.groupEnd();
+                    throw new Error('Unauthorized. Please ensure you are logged in or have access.');
+                }
+
+                if (response.status === 204) {
+                    console.log("    - Success (204 No Content).");
+                    console.groupEnd();
+                    return { message: "Operation successful (No Content)." };
+                }
+
+                const contentType = response.headers.get("content-type");
+                let responseData;
+
+                try {
+                    if (contentType?.includes("application/json")) {
+                        responseData = await response.json();
+                    } else {
+                        const text = await response.text();
+                        if (!response.ok) {
+                            throw new Error(text || `HTTP Error ${response.status}`);
+                        }
+                        responseData = { message: `OK (${response.status})`, data: text };
+                    }
+                } catch (bodyError) {
+                    console.error(`    - Error reading/parsing body (Status: ${response.status}):`, bodyError);
+                    if (!response.ok) {
+                        throw new Error(`HTTP Error ${response.status}, failed to read/parse body.`);
+                    }
+                    responseData = { message: `OK (${response.status}), but error reading/parsing body.` };
+                }
+
+                if (!response.ok) {
+                    const errorMessage = responseData?.error || responseData?.message || `HTTP Error ${response.status}`;
+                    const error = new Error(errorMessage);
+                    error.data = responseData;
+                    error.status = response.status;
+                    console.error(`    - API Error ${response.status}:`, error);
+                    throw error;
+                }
+
+                // console.log("    - Fetch successful, response data:", responseData); // Verbose
+                return responseData;
+
+            } catch (error) {
+                if (error.message !== 'Unauthorized. Please ensure you are logged in or have access.') {
+                    console.error(`[apiFetch] Final Catch Error (${method} ${url}):`, error);
+                }
+                if (!error.status && !error.data && error.message !== 'Unauthorized. Please ensure you are logged in or have access.') {
+                    throw new Error(`Network error or cannot connect to API at ${url}. Ensure the backend server is running and accessible.`);
+                }
+                throw error;
+            } finally {
+                console.groupEnd();
+            }
+        }
+
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                lightIcon.style.display = 'none';
+                darkIcon.style.display = 'block';
+            } else {
+                document.documentElement.classList.remove('dark');
+                lightIcon.style.display = 'block';
+                darkIcon.style.display = 'none';
+            }
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            const currentTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+            localStorage.setItem('theme', currentTheme);
+            applyTheme(currentTheme);
+        });
+
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(savedTheme || (prefersDark ? 'dark' : 'light'));
+
+        function populateYearSelector() {
+            const currentSystemYear = new Date().getFullYear();
+            const startYear = 2024;
+            yearSelector.innerHTML = '';
+            for (let i = 0; i < 10; i++) {
+                const year = startYear + i;
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                if (year === currentSystemYear) {
+                    option.selected = true;
+                }
+                yearSelector.appendChild(option);
+            }
+            if (!yearSelector.querySelector('option[selected]') && yearSelector.options.length > 0) {
+                yearSelector.options[0].selected = true;
+            }
+        }
+
+        function renderCellContent(cellContentDiv, text) {
+            cellContentDiv.innerHTML = '';
+            const td = cellContentDiv.parentElement;
+
+            if (!td) {
+                // console.error("Error in renderCellContent: parent TD element not found for", cellContentDiv); // Verbose
+                return;
+            }
+
+            if (text && text.trim().includes('\n')) {
+                const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                const ul = document.createElement('ul');
+                lines.forEach(lineText => {
+                    const li = document.createElement('li');
+                    li.textContent = lineText;
+                    ul.appendChild(li);
+                });
+                cellContentDiv.appendChild(ul);
+                cellContentDiv.style.textAlign = 'left';
+                cellContentDiv.style.overflow = 'visible';
+                cellContentDiv.style.textOverflow = 'clip';
+                td.style.height = 'auto';
+            } else if (text && text.trim()) {
+                cellContentDiv.textContent = text;
+                cellContentDiv.style.textAlign = 'left';
+                cellContentDiv.style.overflow = 'hidden';
+                cellContentDiv.style.textOverflow = 'ellipsis';
+                td.style.height = '50px';
+            } else {
+                cellContentDiv.textContent = '';
+                cellContentDiv.style.textAlign = 'center';
+                cellContentDiv.style.overflow = 'hidden';
+                cellContentDiv.style.textOverflow = 'ellipsis';
+                td.style.height = '50px';
+            }
+        }
+
+
+        function generateTableForYear(year, projectsToDisplay) {
+            // console.log(`Generating table for year: ${year} with ${projectsToDisplay.length} projects.`); // Verbose
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+
+            if (!projectsToDisplay || projectsToDisplay.length === 0) {
+                tableStatusDiv.textContent = 'No project data to display.';
+                tableStatusDiv.style.display = 'block';
+                scheduleTable.style.display = 'none';
+                return;
+            }
+            tableStatusDiv.style.display = 'none';
+            scheduleTable.style.display = 'table';
+
+            const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const today = new Date();
+            const currentYear = today.getFullYear();
+            const currentMonth = today.getMonth();
+
+            const monthHeaderRow = tableHead.insertRow();
+
+            const projectNoMonthTh = monthHeaderRow.insertCell();
+            projectNoMonthTh.className = "month-header-cell sticky-col sticky-col-0";
+            projectNoMonthTh.textContent = "Project #";
+
+            const projectNameMonthTh = monthHeaderRow.insertCell();
+            projectNameMonthTh.className = "month-header-cell sticky-col sticky-col-1";
+            projectNameMonthTh.textContent = "Project Name";
+
+            const picMonthTh = monthHeaderRow.insertCell();
+            picMonthTh.className = "month-header-cell sticky-col sticky-col-2";
+            picMonthTh.textContent = "PIC";
+
+            const dateHeaderRow = tableHead.insertRow();
+            const projectNoDateTh = dateHeaderRow.insertCell();
+            projectNoDateTh.className = "sticky-col sticky-col-0";
+            const projectNameDateTh = dateHeaderRow.insertCell();
+            projectNameDateTh.className = "sticky-col sticky-col-1";
+            const picDateTh = dateHeaderRow.insertCell();
+            picDateTh.className = "sticky-col sticky-col-2";
+
+
+            let firstDayOfCurrentMonthElement = null;
+
+            for (let month = 0; month < 12; month++) {
+                const numDays = daysInMonth(year, month);
+                const monthTh = monthHeaderRow.insertCell();
+                monthTh.colSpan = numDays;
+                monthTh.className = "month-header-cell";
+                monthTh.textContent = `${monthNames[month]} ${year}`;
+                if (year === currentYear && month === currentMonth) {
+                    monthTh.classList.add('current-month-marker');
+                }
+
+                for (let day = 1; day <= numDays; day++) {
+                    const dateTh = dateHeaderRow.insertCell();
+                    dateTh.textContent = day;
+                    dateTh.className = "px-2 py-1 text-xs";
+
+                    const currentDate = new Date(year, month, day);
+                    const dayOfWeek = currentDate.getDay();
+                    if (dayOfWeek === 0 || dayOfWeek === 6) {
+                        dateTh.classList.add('weekend-column');
+                    }
+                    if (year === currentYear && month === currentMonth && day === 1) {
+                        firstDayOfCurrentMonthElement = dateTh;
+                    }
+                }
+            }
+
+            projectsToDisplay.forEach(project => {
+                const row = tableBody.insertRow();
+
+                const cellProjectNo = row.insertCell();
+                cellProjectNo.className = "sticky-col sticky-col-0";
+                cellProjectNo.textContent = project.project_no || 'N/A';
+
+                const cellProjectName = row.insertCell();
+                cellProjectName.className = "sticky-col sticky-col-1 text-left";
+                cellProjectName.textContent = project.project_name || 'N/A';
+
+                const cellPic = row.insertCell();
+                cellPic.className = "sticky-col sticky-col-2 text-left";
+                cellPic.textContent = project.pic || 'N/A';
+
+                for (let month = 0; month < 12; month++) {
+                    const numDays = daysInMonth(year, month);
+                    for (let day = 1; day <= numDays; day++) {
+                        const cell = row.insertCell();
+                        cell.className = "date-cell";
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        cell.dataset.date = dateStr;
+                        cell.dataset.projectId = project.id;
+
+                        const cellContentDiv = document.createElement('div');
+                        cellContentDiv.className = 'cell-content';
+
+                        cell.appendChild(cellContentDiv);
+
+                        const dataKey = `${project.id}-${dateStr}`;
+                        renderCellContent(cellContentDiv, projectCellData[dataKey] || '');
+
+                        const currentDate = new Date(year, month, day);
+                        const dayOfWeek = currentDate.getDay();
+                        if (dayOfWeek === 0 || dayOfWeek === 6) {
+                            cell.classList.add('weekend-column');
+                        }
+                    }
+                }
+            });
+
+            requestAnimationFrame(() => {
+                // Adding a micro-delay to allow the browser to complete layout calculations
+                setTimeout(() => {
+                    if (tableHead.children.length < 2) { // Ensure header rows are present
+                        console.warn("Sticky positioning (after delay): Table head rows not fully available yet.");
+                        return;
+                    }
+
+                    const firstColHeaderForWidth = tableHead.querySelector('tr:first-child th.sticky-col-0');
+                    const secondColHeaderForWidth = tableHead.querySelector('tr:first-child th.sticky-col-1');
+
+                    if (scheduleTable.offsetWidth > 0 &&
+                        firstColHeaderForWidth &&
+                        secondColHeaderForWidth &&
+                        firstColHeaderForWidth.offsetWidth > 0 &&
+                        secondColHeaderForWidth.offsetWidth > 0) {
+
+                        const firstColWidth = firstColHeaderForWidth.offsetWidth;
+                        const secondColWidth = secondColHeaderForWidth.offsetWidth;
+
+                        // Apply left offset for the second sticky column (Project Name) - affects TH and TD
+                        document.querySelectorAll('th.sticky-col-1, td.sticky-col-1').forEach(cell => {
+                            cell.style.left = `${firstColWidth}px`;
+                        });
+
+                        // Calculate and apply left offset for the third sticky column (PIC) - affects TH and TD
+                        const thirdColOffset = firstColWidth + secondColWidth;
+                        document.querySelectorAll('th.sticky-col-2, td.sticky-col-2').forEach(cell => {
+                            cell.style.left = `${thirdColOffset}px`;
+                        });
+
+                    } else {
+                        let debugMessage = "Could not get offsetWidth of sticky header columns for positioning (after delay).";
+                        debugMessage += `\n  - scheduleTable.offsetWidth: ${scheduleTable.offsetWidth}`;
+                        debugMessage += `\n  - firstColHeaderForWidth: ${firstColHeaderForWidth ? 'found' : 'not found'}, offsetWidth: ${firstColHeaderForWidth?.offsetWidth}`;
+                        debugMessage += `\n  - secondColHeaderForWidth: ${secondColHeaderForWidth ? 'found' : 'not found'}, offsetWidth: ${secondColHeaderForWidth?.offsetWidth}`;
+                        console.warn(debugMessage);
+                    }
+
+                    // Scroll to current month if applicable
+                    if (firstDayOfCurrentMonthElement) {
+                        const tableWrapper = document.querySelector('.table-wrapper');
+                        if (tableWrapper) {
+                            const scrollLeft = firstDayOfCurrentMonthElement.offsetLeft - (tableWrapper.offsetWidth / 2) + (firstDayOfCurrentMonthElement.offsetWidth / 2);
+                            tableWrapper.scrollLeft = scrollLeft > 0 ? scrollLeft : 0;
+                        } else {
+                            firstDayOfCurrentMonthElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                        }
+                    }
+                }, 0); // End of setTimeout
+            }); // End of requestAnimationFrame
+        }
+
+        function makeCellEditable(cellContentDiv) {
+            const parentTd = cellContentDiv.parentElement;
+            if (currentlyEditingCellElement && currentlyEditingCellElement !== parentTd) {
+                const activeTextarea = currentlyEditingCellElement.querySelector('textarea');
+                if (activeTextarea) {
+                    saveCellData(currentlyEditingCellElement, activeTextarea.value);
+                }
+            }
+
+            currentlyEditingCellElement = parentTd;
+
+            let currentText = '';
+            const ul = cellContentDiv.querySelector('ul');
+            if (ul) {
+                const items = [];
+                ul.querySelectorAll('li').forEach(li => items.push(li.textContent));
+                currentText = items.join('\n');
+            } else {
+                currentText = cellContentDiv.textContent;
+            }
+
+            cellContentDiv.innerHTML = '';
+            cellContentDiv.classList.add('editing');
+            parentTd.style.height = 'auto';
+
+            const textarea = document.createElement('textarea');
+            textarea.value = currentText;
+
+            textarea.addEventListener('blur', () => {
+                saveCellData(parentTd, textarea.value);
+                currentlyEditingCellElement = null;
+            });
+
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    saveCellData(parentTd, textarea.value);
+                    currentlyEditingCellElement = null;
+                } else if (e.key === 'Escape') {
+                    const projectId = parentTd.dataset.projectId;
+                    const dateStr = parentTd.dataset.date;
+                    const dataKey = `${projectId}-${dateStr}`;
+                    renderCellContent(cellContentDiv, projectCellData[dataKey] || '');
+                    cellContentDiv.classList.remove('editing');
+                    currentlyEditingCellElement = null;
+                }
+            });
+
+            cellContentDiv.appendChild(textarea);
+            textarea.focus();
+
+            function autoSizeTextarea() {
+                textarea.style.height = 'auto';
+                textarea.style.height = (textarea.scrollHeight) + 'px';
+                parentTd.style.height = 'auto';
+            }
+            textarea.addEventListener('input', autoSizeTextarea);
+            autoSizeTextarea();
+        }
+
+        function saveCellData(cellElementTd, newText) {
+            const cellContentDiv = cellElementTd.querySelector('.cell-content');
+            if (!cellContentDiv) return;
+
+            cellContentDiv.classList.remove('editing');
+
+            const projectId = cellElementTd.dataset.projectId;
+            const dateStr = cellElementTd.dataset.date;
+            const dataKey = `${projectId}-${dateStr}`;
+
+            const trimmedText = newText.trim();
+            projectCellData[dataKey] = trimmedText;
+
+            renderCellContent(cellContentDiv, trimmedText);
+
+            console.log(`Saved data for ${dataKey}: "${trimmedText}"`);
+        }
+
+        tableBody.addEventListener('dblclick', function (event) {
+            const targetCellContent = event.target.closest('.cell-content');
+            if (targetCellContent && !targetCellContent.classList.contains('editing')) {
+                if (targetCellContent.querySelector('textarea')) return;
+                makeCellEditable(targetCellContent);
+            }
+        });
+
+        tableBody.addEventListener('click', function (event) {
+            if (event.target.tagName === 'TEXTAREA' || event.target.closest('.cell-content.editing')) {
+                event.stopPropagation();
+            }
+        }, true);
+
+
+        async function fetchProjectsAndBuildTable() {
+            tableStatusDiv.textContent = 'Fetching project data...';
+            tableStatusDiv.style.display = 'block';
+            scheduleTable.style.display = 'none';
+            try {
+                const projects = await apiFetch(PROJECTS_API);
+                allProjects = Array.isArray(projects) ? projects : (projects?.data && Array.isArray(projects.data) ? projects.data : []);
+
+                if (allProjects.length === 0) {
+                    tableStatusDiv.textContent = 'No projects found. Ensure the backend API is running and returning data for /api/projects.';
+                } else {
+                    generateTableForYear(parseInt(yearSelector.value), allProjects);
+                }
+            } catch (error) {
+                console.error("Failed to fetch projects:", error);
+                allProjects = [];
+                tableStatusDiv.textContent = `Error fetching projects: ${error.message}. Check API connection and console.`;
+                tableStatusDiv.style.display = 'block';
+                scheduleTable.style.display = 'none';
+            }
+        }
+
+        yearSelector.addEventListener('change', (event) => {
+            if (allProjects.length > 0) {
+                generateTableForYear(parseInt(event.target.value), allProjects);
+            } else {
+                fetchProjectsAndBuildTable();
+            }
+        });
+
+        goToCurrentMonthBtn.addEventListener('click', () => {
+            const today = new Date();
+            const currentSystemYear = today.getFullYear();
+
+            let yearOptionExists = Array.from(yearSelector.options).some(opt => parseInt(opt.value) === currentSystemYear);
+
+            if (yearOptionExists) {
+                yearSelector.value = currentSystemYear;
+            } else if (yearSelector.options.length > 0) {
+                yearSelector.value = yearSelector.options[0].value;
+                console.warn(`Current year ${currentSystemYear} is outside the selectable range. Showing ${yearSelector.value}.`);
+            }
+
+            if (allProjects.length > 0) {
+                generateTableForYear(parseInt(yearSelector.value), allProjects);
+            } else {
+                fetchProjectsAndBuildTable();
+            }
+        });
+
+        populateYearSelector();
+        fetchProjectsAndBuildTable();
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                if (allProjects.length > 0) {
+                    generateTableForYear(parseInt(yearSelector.value), allProjects);
+                }
+            }, 250);
+        });
+
+    </script>
+</body>
+</html>

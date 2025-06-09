@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - DS Project Monitoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <script>
+        // Apply dark mode based on system preference or saved setting
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
+    <style>
+        /* Basic Styling for Nav Collapse Transition */
+        #side-nav {
+            transition: width 0.3s ease-in-out;
+            overflow-x: hidden;
+        }
+
+            #side-nav.nav-collapsed {
+                width: 4rem;
+            }
+
+                #side-nav.nav-collapsed .nav-link-text,
+                #side-nav.nav-collapsed #nav-content > ul > li > a > span:not(.icon-only-display),
+                #side-nav.nav-collapsed #nav-content > ul > li > button > div > span,
+                #side-nav.nav-collapsed #nav-content > ul > li > button > svg.nav-link-text,
+                #side-nav.nav-collapsed #settings-submenu,
+                #side-nav.nav-collapsed .nav-section-title,
+                #side-nav.nav-collapsed #username-display-sidebar,
+                #side-nav.nav-collapsed #user-role-display-sidebar,
+                #side-nav.nav-collapsed .user-avatar-container > img,
+                #side-nav.nav-collapsed .user-avatar-container > .avatar-fallback {
+                    display: none;
+                }
+
+                #side-nav.nav-collapsed #nav-main-toggle-btn + .nav-link-text {
+                    display: none;
+                }
+
+                #side-nav.nav-collapsed .nav-link,
+                #side-nav.nav-collapsed #settings-toggle-btn,
+                #side-nav.nav-collapsed #theme-toggle-btn-sidebar,
+                #side-nav.nav-collapsed .user-info-container-nav a {
+                    justify-content: center;
+                }
+
+                #side-nav.nav-collapsed .user-avatar-container {
+                    justify-content: center;
+                }
+
+                    #side-nav.nav-collapsed .user-avatar-container > .avatar-icon-fallback {
+                        display: flex !important;
+                    }
+
+        .avatar-fallback {
+            display: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 9999px;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.75rem;
+        }
+
+        .avatar-icon-fallback {
+            display: none;
+        }
+
+        .main-content-area {
+            overflow-y: auto;
+        }
+
+        .collapsible-content.hidden {
+            display: none;
+        }
+
+        .toggle-icon {
+            transition: transform 0.2s ease-in-out;
+            display: inline-block;
+        }
+
+        .collapsible.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .button {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .button-small {
+            padding: 0.125rem 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .button-secondary {
+            background-color: #e5e7eb;
+            border-color: #d1d5db;
+            color: #374151;
+        }
+
+            .button-secondary:hover {
+                background-color: #d1d5db;
+            }
+
+        .dark .button-secondary {
+            background-color: #4b5563;
+            border-color: #6b7280;
+            color: #d1d5db;
+        }
+
+            .dark .button-secondary:hover {
+                background-color: #6b7280;
+            }
+
+        .button-primary {
+            background-color: #4f46e5;
+            border-color: #4338ca;
+            color: white;
+        }
+
+            .button-primary:hover {
+                background-color: #4338ca;
+                border-color: #3730a3;
+            }
+
+        .dark .button-primary {
+            background-color: #6366f1;
+            border-color: #4f46e5;
+            color: white;
+        }
+
+            .dark .button-primary:hover {
+                background-color: #4f46e5;
+                border-color: #4338ca;
+            }
+
+        .button-teal {
+            background-color: #14b8a6;
+            border-color: #0d9488;
+            color: white;
+        }
+
+            .button-teal:hover {
+                background-color: #0d9488;
+                border-color: #0f766e;
+            }
+
+        .dark .button-teal {
+            background-color: #2dd4bf;
+            border-color: #14b8a6;
+            color: #1f2937;
+        }
+
+            .dark .button-teal:hover {
+                background-color: #14b8a6;
+                border-color: #0d9488;
+            }
+
+        .button-success {
+            background-color: #22c55e;
+            border-color: #16a34a;
+            color: white;
+        }
+
+            .button-success:hover {
+                background-color: #16a34a;
+                border-color: #15803d;
+            }
+
+        .dark .button-success {
+            background-color: #22c55e;
+            border-color: #16a34a;
+            color: #f9fafb;
+        }
+
+            .dark .button-success:hover {
+                background-color: #16a34a;
+                border-color: #15803d;
+            }
+
+        .button-gray {
+            background-color: #6b7280;
+            border-color: #4b5563;
+            color: white;
+        }
+
+            .button-gray:hover {
+                background-color: #4b5563;
+            }
+
+        .dark .button-gray {
+            background-color: #4b5563;
+            border-color: #374151;
+            color: #e5e7eb;
+        }
+
+            .dark .button-gray:hover {
+                background-color: #374151;
+            }
+
+        .button-danger {
+            background-color: #ef4444;
+            border-color: #dc2626;
+            color: white;
+        }
+
+            .button-danger:hover {
+                background-color: #dc2626;
+                border-color: #b91c1c;
+            }
+
+        .dark .button-danger {
+            background-color: #ef4444;
+            border-color: #dc2626;
+            color: #f9fafb;
+        }
+
+            .dark .button-danger:hover {
+                background-color: #dc2626;
+                border-color: #b91c1c;
+            }
+        /* Custom modal styling for glassmorphism */
+        .modal.glass-modal {
+            background-color: rgba(107, 114, 128, 0.5); /* gray-500 with 50% opacity */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px); /* For Safari */
+        }
+
+        .modal .modal-content.glass-modal-content {
+            background-color: rgba(255, 255, 255, 0.8); /* white with 80% opacity */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .dark .modal .modal-content.glass-modal-content {
+            background-color: rgba(30, 41, 59, 0.8); /* slate-800 with 80% opacity */
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-300 font-[Inter,sans-serif] flex flex-col min-h-screen">
+
+    <header class="app-header flex justify-between items-center py-3 border-b bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 px-4 md:px-6 lg:px-8 sticky top-0 z-20 flex-shrink-0 shadow-sm">
+        <div class="title-container flex items-center space-x-3">
+            <img src="/static/CMRP Logo Dark.svg" alt="CMRP Logo" class="header-logo h-8 w-auto block dark:hidden">
+            <img src="/static/CMRP Logo Light.svg" alt="CMRP Logo Dark" class="header-logo h-8 w-auto hidden dark:block">
+            <div style="display: none;" class="logo-fallback-initials h-8 w-8 bg-blue-200 dark:bg-sky-700 rounded flex items-center justify-center text-sm font-bold text-blue-700 dark:text-sky-200">DS</div>
+            <h1 class="text-xl font-semibold text-gray-800 dark:text-slate-200">DS Project Monitoring</h1>
+        </div>
+        <div class="header-actions flex items-center space-x-4">
+            <a href="/updates_log.html" class="button button-secondary button-small" title="View All Updates">Updates Log</a>
+            <div class="user-info-container flex items-center space-x-3 border-l border-gray-300 dark:border-slate-600 pl-4">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-600 dark:text-slate-400"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 0 1 6 0z" /></svg>
+                <span id="user-display-name" class="text-sm font-medium text-gray-700 dark:text-slate-300">User Name</span>
+                <button id="logout-btn" class="button button-danger button-small flex items-center space-x-1" title="Logout">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" /></svg>
+                    <span class="hidden sm:inline">Logout</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-col md:flex-row main-flex-container flex-grow p-4 gap-4">
+        <nav id="side-nav" class="w-full md:w-56 lg:w-56 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md flex-shrink-0 relative flex flex-col border border-gray-200 dark:border-slate-700 print:hidden">
+            <div class="flex justify-start items-center mb-3 pb-2 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+                <button id="nav-main-toggle-btn" title="Toggle Navigation" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                </button>
+                <span class="nav-link-text ml-2 text-xs text-gray-500 dark:text-slate-500">MENU</span>
+            </div>
+            <div id="nav-content" class="flex-grow overflow-y-auto">
+                <ul class="space-y-1">
+                    <li><a href="/" title="Dashboard" class="nav-link block py-1.5 text-blue-600 dark:text-sky-400 flex items-center px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded font-semibold bg-gray-100 dark:bg-slate-700"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg><span class="nav-link-text ml-2">Dashboard</span></a></li>
+                    <li><a href="/forecast.html" title="View Forecast Page" class="nav-link block py-1.5 text-gray-700 dark:text-slate-300 hover:text-black dark:hover:text-white flex items-center px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 1 5.814-5.519l2.74-1.22m0 0-5.94-2.28m5.94 2.28-2.28 5.941" /></svg><span class="nav-link-text ml-2">Forecast</span></a></li>
+                    <li><a href="/updates.html" title="View Updates" class="nav-link block py-1.5 text-gray-700 dark:text-slate-300 hover:text-black dark:hover:text-white flex items-center px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" /></svg><span class="nav-link-text ml-2">Updates</span></a></li>
+                    <li><a href="/mrf_form.html" title="MRF Form" class="nav-link block py-1.5 text-gray-700 dark:text-slate-300 flex items-center px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded group"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-3 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg><span class="nav-link-text ml-2">MRF Form</span></a></li>
+                    <li><a href="/liquidation.html" title="Liquidation Form" class="nav-link block py-1.5 text-gray-700 dark:text-slate-300 flex items-center px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded group"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-3 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2" /></svg><span class="nav-link-text ml-2">Liquidation Form</span></a></li>
+                    <li>
+                        <button id="settings-toggle-btn" class="nav-link flex items-center justify-between w-full p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group">
+                            <div class="flex items-center"><svg class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg><span class="nav-link-text">Settings & Logs</span></div>
+                            <svg id="settings-arrow" class="w-4 h-4 nav-link-text transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <ul id="settings-submenu" class="hidden mt-1 space-y-1 pl-4 nav-link-text">
+                            <li><a href="/updates_log.html" class="nav-link flex items-center p-2 text-sm rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group"><span class="nav-link-text">Project Updates Log</span></a></li>
+                            <li><a href="/mrf_items_log.html" class="nav-link flex items-center p-2 text-sm rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group"><span class="nav-link-text">MRF Items Log</span></a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div class="nav-section-title text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 nav-link-text">Theme</div>
+                    <button id="theme-toggle-btn-sidebar" class="w-full flex items-center p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group">
+                        <svg id="theme-icon-light-sidebar" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <svg id="theme-icon-dark-sidebar" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                        <span class="nav-link-text">Toggle Theme</span>
+                    </button>
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 user-info-container-nav">
+                        <div class="nav-section-title text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 nav-link-text">Account</div>
+                        <div class="flex items-center mb-2 p-2 user-avatar-container">
+                            <img src="https://placehold.co/32x32/a0aec0/ffffff?text=U" alt="User Avatar" class="h-8 w-8 rounded-full mr-2 nav-link-text">
+                            <div class="avatar-fallback bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 nav-link-text">U</div>
+                            <svg class="w-8 h-8 p-1.5 text-gray-500 dark:text-gray-400 avatar-icon-fallback" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 0 1 6 0z" /></svg>
+                            <div>
+                                <div class="font-medium nav-link-text" id="username-display-sidebar">User Name</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 nav-link-text" id="user-role-display-sidebar">User Role</div>
+                            </div>
+                        </div>
+                        <a href="#" id="logout-btn-nav-footer" class="nav-link flex items-center p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group">
+                            <svg class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            <span class="nav-link-text">Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main id="main-content" class="w-full md:flex-1 p-4 sm:p-6 md:p-8 space-y-4 main-content-area print:ml-0">
+            <div id="feedbackMessage" class="feedback sticky top-0 z-10 mb-4" role="alert"></div>
+
+            <section id="dashboard" class="dashboard-section bg-white dark:bg-slate-800 rounded-lg shadow-md border border-gray-200 dark:border-slate-700 p-4">
+                <h2 class="text-lg font-semibold mb-3 text-blue-600 dark:text-sky-400">Dashboard</h2>
+                <div id="dashboardLoading" class="loading text-center p-4" style="display: none;">Loading...</div>
+                <div id="dashboardError" class="error text-center p-4" style="display: none;"></div>
+
+                <div id="dashboardMetrics" class="dashboard-metrics-container grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="flex flex-col items-center p-3 bg-gray-50 dark:bg-slate-700 rounded shadow-sm border border-gray-200 dark:border-slate-600">
+                        <span id="metricTotalRemaining" class="text-2xl font-bold text-gray-900 dark:text-slate-100">...</span>
+                        <p class="text-sm text-gray-600 dark:text-slate-400 mt-1 text-center">Backlogs</p>
+                        <svg class="mt-2 h-5 w-5 text-gray-500 dark:text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                    </div>
+                    <div class="flex flex-col items-center p-3 bg-gray-50 dark:bg-slate-700 rounded shadow-sm border border-gray-200 dark:border-slate-600">
+                        <span id="metricCompletedCount" class="text-2xl font-bold text-gray-900 dark:text-slate-100">...</span>
+                        <p id="metricCompletedLabel" class="text-sm text-gray-600 dark:text-slate-400 mt-1 text-center">Completed (This Yr)</p>
+                        <svg class="mt-2 h-5 w-5 text-green-500 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                    <div class="flex flex-col items-center p-3 bg-gray-50 dark:bg-slate-700 rounded shadow-sm border border-gray-200 dark:border-slate-600">
+                        <span id="metricActiveCount" class="text-2xl font-bold text-gray-900 dark:text-slate-100">...</span>
+                        <p class="text-sm text-gray-600 dark:text-slate-400 mt-1 text-center">Active Projects</p>
+                        <svg class="mt-2 h-5 w-5 text-gray-500 dark:text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0021 18V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v12a2.25 2.25 0 002.25 2.25z" /></svg>
+                    </div>
+                    <div class="flex flex-col items-center p-3 bg-gray-50 dark:bg-slate-700 rounded shadow-sm border border-gray-200 dark:border-slate-600">
+                        <span id="metricNewCount" class="text-2xl font-bold text-gray-900 dark:text-slate-100">...</span>
+                        <p class="text-sm text-gray-600 dark:text-slate-400 mt-1 text-center">New Projects (15d)</p>
+                        <svg class="mt-2 h-5 w-5 text-gray-500 dark:text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.493 4.493 0 004.306-1.758M16.5 9a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" /></svg>
+                    </div>
+                </div>
+
+                <div class="monthly-metrics-container grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 bg-gray-50 dark:bg-slate-700/50 rounded border border-gray-200 dark:border-slate-600">
+                    <h3 class="col-span-full text-lg font-semibold mb-2 text-gray-700 dark:text-slate-300">Monthly Forecast vs Invoiced (Current Year)</h3>
+                    <div id="metric-month-block-jan" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">January</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-jan">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-jan">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-jan">(-%)</div></div>
+                    <div id="metric-month-block-feb" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">February</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-feb">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-feb">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-feb">(-%)</div></div>
+                    <div id="metric-month-block-mar" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">March</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-mar">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-mar">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-mar">(-%)</div></div>
+                    <div id="metric-month-block-apr" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">April</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-apr">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-apr">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-apr">(-%)</div></div>
+                    <div id="metric-month-block-may" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">May</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-may">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-may">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-may">(-%)</div></div>
+                    <div id="metric-month-block-jun" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">June</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-jun">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-jun">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-jun">(-%)</div></div>
+                    <div id="metric-month-block-jul" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">July</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-jul">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-jul">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-jul">(-%)</div></div>
+                    <div id="metric-month-block-aug" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">August</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-aug">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-aug">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-aug">(-%)</div></div>
+                    <div id="metric-month-block-sep" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">September</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-sep">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-sep">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-sep">(-%)</div></div>
+                    <div id="metric-month-block-oct" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">October</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-oct">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-oct">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-oct">(-%)</div></div>
+                    <div id="metric-month-block-nov" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">November</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-nov">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-nov">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-nov">(-%)</div></div>
+                    <div id="metric-month-block-dec" class="p-3 bg-white dark:bg-slate-700 rounded border border-gray-200 dark:border-slate-600 shadow-sm"><div class="font-medium text-gray-600 dark:text-slate-400">December</div><div class="text-xl font-semibold text-green-600 dark:text-green-400 mt-1" id="metric-invoiced-dec">₱0.00</div><div class="text-xs text-blue-600 dark:text-sky-400 mt-0.5" id="metric-forecast-dec">(Fcst: ₱0.00)</div><div class="text-xs text-gray-500 dark:text-slate-500 mt-0.5" id="metric-percentage-dec">(-%)</div></div>
+                </div>
+            </section>
+
+            <section id="activeProjectsSection" class="projects-section collapsible bg-white dark:bg-slate-800 rounded-lg shadow-md border border-gray-200 dark:border-slate-700 p-4">
+                <div class="section-header flex flex-wrap justify-between items-center gap-2 mb-3">
+                    <div class="flex items-center">
+                        <button type="button" class="toggle-section-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-400 mr-2 flex-shrink-0" data-target="active-projects-content" aria-expanded="true">
+                            <span class="toggle-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg></span>
+                        </button>
+                        <h2 class="text-lg font-semibold text-blue-600 dark:text-sky-400">Active Projects</h2>
+                    </div>
+                    <div class="header-actions flex flex-wrap gap-2">
+                        <button id="addProjectBtn" class="button button-primary button-small">Add Project</button>
+                        <button id="open-csv-modal-btn" class="button button-teal button-small">Upload CSV</button>
+                        <button id="export-active-csv-btn" class="button button-success button-small">Export Active</button>
+                    </div>
+                </div>
+                <div class="collapsible-content" id="active-projects-content">
+                    <div id="activeProjectsLoading" class="loading text-center p-4" style="display: none;">Loading projects...</div>
+                    <div id="activeProjectsError" class="error text-center p-4" style="display: none;"></div>
+                    <div class="table-container overflow-x-auto">
+                        <table id="active-project-table" class="w-full text-sm text-left table-auto border-collapse">
+                            <thead class="bg-gray-50 dark:bg-slate-900/50 text-xs uppercase text-gray-600 dark:text-slate-300">
+                                <tr>
+                                    <th class="px-2 py-2 w-24 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="project_no">Project #<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-48 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="project_name">Project Name<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-32 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="client">Client<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-28 text-right border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="amount">Amount <span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-20 text-right border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="status">Status (%)<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-28 text-right border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="remaining_amount">Remaining <span class="sort-icon">▼</span></th>
+                                    <th class="px-2 py-2 w-16 text-center border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="total_running_weeks">Weeks <span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-24 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="po_date">PO Date<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-20 text-center border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="pic">PIC<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-64 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="latest_update">Latest Update<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-24 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="date_completed">Completed<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-32 action-column border-b border-gray-200 dark:border-slate-700">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activeProjectsTableBody" class="divide-y divide-gray-200 dark:divide-slate-700">
+                                <tr class="loading"><td colspan="12" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading projects...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="completedProjectsSection" class="projects-section collapsible collapsed bg-white dark:bg-slate-800 rounded-lg shadow-md border border-gray-200 dark:border-slate-700 p-4">
+                <div class="section-header flex flex-wrap justify-between items-center gap-2 mb-3">
+                    <div class="flex items-center">
+                        <button type="button" class="toggle-section-btn p-1 rounded hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-400 mr-2 flex-shrink-0" data-target="completed-projects-content" aria-expanded="false">
+                            <span class="toggle-icon"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg></span>
+                        </button>
+                        <h2 class="text-lg font-semibold text-blue-600 dark:text-sky-400">Completed Projects</h2>
+                    </div>
+                    <div class="header-actions flex flex-wrap gap-2">
+                        <button id="export-completed-csv-btn" class="button button-success button-small">Export Completed</button>
+                    </div>
+                </div>
+                <div class="collapsible-content hidden" id="completed-projects-content">
+                    <div id="completedProjectsLoading" class="loading text-center p-4" style="display: none;">Loading completed projects...</div>
+                    <div id="completedProjectsError" class="error text-center p-4" style="display: none;"></div>
+                    <div class="table-container overflow-x-auto">
+                        <table id="completed-project-table" class="w-full text-sm text-left table-auto border-collapse">
+                            <thead class="bg-gray-50 dark:bg-slate-900/50 text-xs uppercase text-gray-600 dark:text-slate-300">
+                                <tr>
+                                    <th class="px-2 py-2 w-24 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="project_no">Project #<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-48 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="project_name">Project Name<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-32 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="client">Client<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-28 text-right border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="amount">Amount <span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-20 text-right border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="status">Status (%)<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-28 text-right border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="remaining_amount">Remaining <span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-16 text-center border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="total_running_weeks">Weeks <span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-24 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="po_date">PO Date<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-20 text-center border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="pic">PIC<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-64 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="latest_update">Latest Update<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-24 border-b border-gray-200 dark:border-slate-700 sortable-header" data-sort-key="date_completed">Completed<span class="sort-icon"></span></th>
+                                    <th class="px-2 py-2 w-32 action-column border-b border-gray-200 dark:border-slate-700">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="completedProjectsTableBody" class="divide-y divide-gray-200 dark:divide-slate-700">
+                                <tr class="loading"><td colspan="12" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading completed projects...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="modals-container">
+        <div id="addProjectModal" class="modal hidden fixed inset-0 overflow-y-auto h-full w-full z-50 glass-modal">
+            <div class="modal-content relative rounded-lg shadow-xl max-w-2xl w-full mx-auto my-8 max-h-[90vh] overflow-y-auto p-6 glass-modal-content">
+                <button type="button" class="close-modal-btn absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Add New Project</h2>
+                <form id="addProjectForm" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label for="addProjectNo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project Number</label><input type="text" id="addProjectNo" name="project_no" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="addClient" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client</label><input type="text" id="addClient" name="client" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div class="md:col-span-2"><label for="addProjectName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project Name</label><input type="text" id="addProjectName" name="project_name" required class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="addAmount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label><input type="text" id="addAmount" name="amount" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="addPoNo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PO Number</label><input type="text" id="addPoNo" name="po_no" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="addPoDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PO Date</label><input type="date" id="addPoDate" name="po_date" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white appearance-none"></div>
+                        <div><label for="addPic" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PIC</label><input type="text" id="addPic" name="pic" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="addStatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status (%)</label><input type="number" id="addStatus" name="status" min="0" max="100" step="1" value="0" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                    </div>
+                    <div><label for="addInitialUpdate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Initial Update</label><textarea id="addInitialUpdate" name="initial_update" rows="3" class="form-textarea w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></textarea></div>
+                    <div class="flex justify-end space-x-2 pt-4"><button type="button" class="button button-gray close-modal-btn">Cancel</button><button type="submit" class="button button-primary">Add Project</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="editProjectModal" class="modal hidden fixed inset-0 overflow-y-auto h-full w-full z-50 glass-modal">
+            <div class="modal-content relative rounded-lg shadow-xl max-w-2xl w-full mx-auto my-8 max-h-[90vh] overflow-y-auto p-6 glass-modal-content">
+                <button type="button" class="close-modal-btn absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Edit Project</h2>
+                <form id="editProjectForm" class="space-y-4">
+                    <input type="hidden" id="editProjectId" name="id">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label for="editProjectNo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project Number</label><input type="text" id="editProjectNo" name="project_no" required class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="editClient" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client</label><input type="text" id="editClient" name="client" required class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div class="md:col-span-2"><label for="editProjectName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project Name</label><input type="text" id="editProjectName" name="project_name" required class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="editAmount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label><input type="text" id="editAmount" name="amount" required class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="editPoDate" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PO Date</label><input type="date" id="editPoDate" name="po_date" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white appearance-none"></div>
+                        <div><label for="editPic" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PIC</label><input type="text" id="editPic" name="pic" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="editStatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status (%)</label><input type="number" id="editStatus" name="status" min="0" max="100" step="1" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></div>
+                        <div><label for="editDateCompleted" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date Completed</label><input type="date" id="editDateCompleted" name="date_completed" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white appearance-none"></div>
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4"><button type="button" class="button button-gray close-modal-btn">Cancel</button><button type="submit" class="button button-primary">Update Project</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="projectModal" class="modal hidden fixed inset-0 overflow-y-auto h-full w-full z-50 glass-modal">
+            <div class="modal-content relative rounded-lg shadow-xl max-w-2xl w-full mx-auto my-8 max-h-[90vh] overflow-y-auto p-6 glass-modal-content">
+                <button type="button" class="close-modal-btn absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                <h2 id="projectModalTitle" class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Project Details</h2>
+                <p id="projectModalSubtitle" class="text-sm text-gray-500 dark:text-gray-400 mb-4"></p>
+                <div id="projectDetails" class="mb-6">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div><p class="text-sm text-gray-500 dark:text-gray-400">Client:</p><p id="projectDetailClient" class="font-medium text-gray-900 dark:text-white"></p></div>
+                        <div><p class="text-sm text-gray-500 dark:text-gray-400">Amount:</p><p id="projectDetailAmount" class="font-medium text-gray-900 dark:text-white"></p></div>
+                        <div><p class="text-sm text-gray-500 dark:text-gray-400">PO Date:</p><p id="projectDetailPoDate" class="font-medium text-gray-900 dark:text-white"></p></div>
+                        <div><p class="text-sm text-gray-500 dark:text-gray-400">PIC:</p><p id="projectDetailPic" class="font-medium text-gray-900 dark:text-white"></p></div>
+                        <div><p class="text-sm text-gray-500 dark:text-gray-400">Status:</p><p id="projectDetailStatus" class="font-medium text-gray-900 dark:text-white"></p></div>
+                        <div><p class="text-sm text-gray-500 dark:text-gray-400">Running Time:</p><p id="projectDetailRunningTime" class="font-medium text-gray-900 dark:text-white"></p></div>
+                    </div>
+                </div>
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-3"><h3 class="text-lg font-medium text-gray-800 dark:text-white">Project Updates</h3><button id="refreshUpdatesBtn" class="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>Refresh</button></div>
+                    <div id="updatesLoading" class="loading text-center p-4" style="display: none;">Loading updates...</div>
+                    <div id="updatesError" class="error text-red-600 dark:text-red-400 text-sm mb-3" style="display: none;"></div>
+                    <ul id="projectUpdatesList" class="space-y-3 mb-4"></ul>
+                    <form id="addUpdateForm" class="space-y-3 border-t border-gray-200 dark:border-slate-600 pt-4">
+                        <input type="hidden" id="updateProjectId" name="project_id">
+                        <div><label for="addUpdateMessage" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Update</label><textarea id="addUpdateMessage" name="message" rows="2" required class="form-textarea w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white"></textarea></div>
+                        <div class="flex justify-end"><button type="submit" class="button button-primary button-small">Add Update</button></div>
+                    </form>
+                </div>
+                <div class="flex justify-between pt-4 border-t border-gray-200 dark:border-slate-600">
+                    <div><button type="button" id="deleteProjectBtn" class="button button-danger button-small">Delete Project</button></div>
+                    <div class="space-x-2"><button type="button" id="openEditModalBtn" class="button button-secondary button-small">Edit Project</button><button type="button" id="openForecastModalBtn" class="button button-teal button-small">Add Forecast</button><button type="button" class="button button-gray button-small close-modal-btn">Close</button></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="csv-upload-modal" class="modal hidden fixed inset-0 overflow-y-auto h-full w-full z-50 glass-modal">
+            <div class="modal-content relative rounded-lg shadow-xl max-w-lg w-full mx-auto my-8 p-6 glass-modal-content">
+                <button type="button" class="close-modal-btn absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Upload Projects CSV</h2>
+                <div id="csv-message" class="text-sm text-red-600 dark:text-red-400 mb-3" style="display:none;"></div>
+                <form id="csvUploadForm" class="space-y-4">
+                    <div><label for="csv-file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select CSV File</label><input type="file" id="csv-file" name="file" accept=".csv" required class="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-indigo-50 file:text-indigo-700 dark:file:bg-indigo-900 dark:file:text-indigo-200 hover:file:bg-indigo-100 dark:hover:file:bg-indigo-800"></div>
+                    <div class="text-sm text-gray-600 dark:text-gray-400 my-3"><p class="mb-1">The CSV file should have the following columns:</p><code class="text-xs bg-gray-100 dark:bg-slate-900 p-2 rounded block overflow-x-auto">project_no,project_name,client,amount,status,po_date,pic,initial_update</code></div>
+                    <div class="flex justify-end space-x-2 pt-4"><button type="button" class="button button-gray close-modal-btn">Cancel</button><button type="submit" class="button button-primary">Upload</button></div>
+                </form>
+            </div>
+        </div>
+
+        <div id="forecast-modal" class="modal hidden fixed inset-0 overflow-y-auto h-full w-full z-50 glass-modal">
+            <div class="modal-content relative rounded-lg shadow-xl max-w-lg w-full mx-auto my-8 p-6 glass-modal-content">
+                <button type="button" class="close-modal-btn absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-2">Add Forecast</h2>
+                <p id="forecast-project-info" class="text-sm text-gray-500 dark:text-gray-400 mb-4"></p>
+                <div id="forecast-error-message" class="text-sm text-red-600 dark:text-red-400 mb-3" style="display:none;"></div>
+                <form id="forecast-form" class="space-y-4">
+                    <input type="hidden" id="forecast-modal-project-id" name="project_id">
+                    <input type="hidden" id="forecast-date" name="forecast_date_combined">
+
+                    <div>
+                        <label for="forecast-month" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Month</label>
+                        <select id="forecast-month" name="month" required class="form-select w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white">
+                            <option value="">Select Month</option>
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="forecast-year-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Year</label>
+                        <input type="number" id="forecast-year-input" name="year" min="2023" max="2030" required class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="forecast-amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (PHP)</label>
+                        <input type="text" id="forecast-amount" name="amount" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white" placeholder="Enter amount OR percent">
+                    </div>
+                    <div>
+                        <label for="forecast-percent" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Percent (%)</label>
+                        <input type="text" id="forecast-percent" name="percent" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white" placeholder="Enter percent OR amount">
+                    </div>
+                    <div>
+                        <label for="forecast-invoiced" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoiced Amount (Optional)</label>
+                        <input type="text" id="forecast-invoiced" name="invoiced" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white">
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="forecast-deduct-checkbox" name="apply_deduction" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                        <label for="forecast-deduct-checkbox" class="ml-2 block text-sm text-gray-700 dark:text-gray-300">Apply VAT/Tax Deduction</label>
+                    </div>
+                    <div id="forecast-deduction-percent-container" class="ml-6 mt-2" style="display: none;">
+                        <label for="forecast-deduction-percent" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Deduction Percentage (%)</label>
+                        <input type="number" id="forecast-deduction-percent" name="deduction_percent" min="0" max="100" step="0.01" class="form-input w-full rounded-md border-gray-300 dark:border-gray-600 bg-white/70 dark:bg-slate-700/70 dark:text-white">
+                    </div>
+                    <div class="flex justify-end space-x-2 pt-4">
+                        <button type="button" id="forecast-cancel-btn" class="button button-gray close-modal-btn">Cancel</button>
+                        <button type="submit" class="button button-primary">Add Forecast</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <footer class="app-footer text-center py-3 border-t bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-xs text-gray-600 dark:text-slate-400 flex-shrink-0">
+        © <span id="current-year">2024</span> DS Project Monitoring. All Rights Reserved.
+        If you encounter issues, please check your internet connection and ensure external resources (CDNs for styles/fonts) are accessible.
+    </footer>
+
+    <script src="/static/script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Dynamic year in footer
+            const currentYearElement = document.getElementById('current-year');
+            if (currentYearElement) {
+                currentYearElement.textContent = new Date().getFullYear();
+            } else {
+                console.warn("Element with ID 'current-year' not found for footer.");
+            }
+
+            // Enhanced logo fallback script
+            document.querySelectorAll('.header-logo').forEach(logoImg => {
+                logoImg.onerror = function () {
+                    this.style.display = 'none';
+                    const otherLogoId = this.id === 'logo-light' ? 'logo-dark' : 'logo-light';
+                    const otherLogo = document.getElementById(otherLogoId);
+                    if (otherLogo) otherLogo.style.display = 'none';
+
+                    const fallbackInitials = this.closest('.title-container').querySelector('.logo-fallback-initials');
+                    if (fallbackInitials) fallbackInitials.style.display = 'flex';
+                };
+            });
+
+            // Fallback for the placeholder avatar in the nav
+            const navUserAvatarImg = document.querySelector('#side-nav .user-avatar-container img');
+            if (navUserAvatarImg) {
+                navUserAvatarImg.onerror = function () {
+                    this.style.display = 'none';
+                    const textFallback = this.nextElementSibling;
+                    const iconFallback = textFallback ? textFallback.nextElementSibling : null;
+
+                    const sideNavElement = document.getElementById('side-nav');
+                    if (sideNavElement && sideNavElement.classList.contains('nav-collapsed')) {
+                        if (iconFallback) iconFallback.style.display = 'flex';
+                        if (textFallback) textFallback.style.display = 'none';
+                    } else {
+                        if (textFallback) textFallback.style.display = 'flex';
+                        if (iconFallback) iconFallback.style.display = 'none';
+                    }
+                };
+                if (!navUserAvatarImg.complete || navUserAvatarImg.naturalWidth === 0) {
+                    navUserAvatarImg.dispatchEvent(new Event('error'));
+                }
+            }
+
+            const sideNav = document.getElementById('side-nav');
+            const mainContent = document.getElementById('main-content');
+            const navToggleBtn = document.getElementById('nav-main-toggle-btn');
+            const themeToggleBtnSidebar = document.getElementById('theme-toggle-btn-sidebar');
+            const lightIconSidebar = document.getElementById('theme-icon-light-sidebar');
+            const darkIconSidebar = document.getElementById('theme-icon-dark-sidebar');
+
+            function applyInitialNavState() {
+                if (!sideNav || !mainContent) {
+                    console.warn("Side nav or main content not found for applyInitialNavState");
+                    return;
+                }
+                if (localStorage.getItem('navCollapsed') === 'true') {
+                    sideNav.classList.add('nav-collapsed');
+                    if (window.innerWidth > 768) mainContent.style.marginLeft = '4rem'; else mainContent.style.marginLeft = '0'; // Updated
+                } else {
+                    sideNav.classList.remove('nav-collapsed');
+                    const navWidth = sideNav.offsetWidth + 'px'; // Ensure this is correct
+                    if (window.innerWidth > 768) mainContent.style.marginLeft = navWidth; else mainContent.style.marginLeft = '0'; // Updated
+                }
+                if (navUserAvatarImg && navUserAvatarImg.onerror) navUserAvatarImg.onerror();
+            }
+
+
+            if (navToggleBtn && sideNav && mainContent) {
+                navToggleBtn.addEventListener('click', () => {
+                    sideNav.classList.toggle('nav-collapsed');
+                    const isCollapsed = sideNav.classList.contains('nav-collapsed');
+                    localStorage.setItem('navCollapsed', isCollapsed ? 'true' : 'false');
+                    applyInitialNavState();
+                });
+            }
+
+
+            function updateThemeIconsSidebar() {
+                if (lightIconSidebar && darkIconSidebar) {
+                    if (document.documentElement.classList.contains('dark')) {
+                        lightIconSidebar.style.display = 'none';
+                        darkIconSidebar.style.display = 'block';
+                    } else {
+                        lightIconSidebar.style.display = 'block';
+                        darkIconSidebar.style.display = 'none';
+                    }
+                }
+            }
+
+            if (themeToggleBtnSidebar) {
+                themeToggleBtnSidebar.addEventListener('click', () => {
+                    document.documentElement.classList.toggle('dark');
+                    localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+                    updateThemeIconsSidebar();
+                });
+            }
+
+            applyInitialNavState();
+            updateThemeIconsSidebar();
+            window.addEventListener('resize', applyInitialNavState);
+
+
+            const forecastMonthSelect = document.getElementById('forecast-month');
+            const forecastYearInput = document.getElementById('forecast-year-input');
+            const forecastDateCombinedInput = document.getElementById('forecast-date');
+
+            function updateCombinedDate() {
+                if (forecastMonthSelect && forecastYearInput && forecastDateCombinedInput) {
+                    const month = forecastMonthSelect.value;
+                    const year = forecastYearInput.value;
+                    if (month && year) {
+                        forecastDateCombinedInput.value = `${year}-${String(month).padStart(2, '0')}-01`;
+                    } else {
+                        forecastDateCombinedInput.value = '';
+                    }
+                }
+            }
+            if (forecastMonthSelect) forecastMonthSelect.addEventListener('change', updateCombinedDate);
+            if (forecastYearInput) forecastYearInput.addEventListener('change', updateCombinedDate);
+
+            if (forecastDateCombinedInput && forecastMonthSelect && forecastYearInput) {
+                const today = new Date();
+                if (!forecastMonthSelect.value) forecastMonthSelect.value = today.getMonth() + 1;
+                if (!forecastYearInput.value) forecastYearInput.value = today.getFullYear();
+                updateCombinedDate();
+            }
+        });
+    </script>
+</body>
+</html>

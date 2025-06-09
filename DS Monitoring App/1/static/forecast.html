@@ -1,0 +1,496 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monthly Forecast - DS Project Monitoring</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Apply dark mode based on system preference or saved setting
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+    </script>
+    <style>
+        /* Basic Styling for Nav Collapse Transition */
+        #side-nav {
+            transition: width 0.3s ease-in-out;
+            overflow-x: hidden; /* Prevent horizontal scrollbar during transition */
+        }
+
+            #side-nav.nav-collapsed {
+                width: 4rem; /* Adjust as needed for icon-only view */
+            }
+
+                #side-nav.nav-collapsed .nav-link-text,
+                #side-nav.nav-collapsed #nav-content > ul > li > a > span:not(.icon-only-display), /* Keep icons if they have a specific class */
+                #side-nav.nav-collapsed #nav-content > ul > li > button > div > span,
+                #side-nav.nav-collapsed #nav-content > ul > li > button > svg.nav-link-text, /* Chevron for dropdown */
+                #side-nav.nav-collapsed #settings-submenu,
+                #side-nav.nav-collapsed .nav-section-title,
+                #side-nav.nav-collapsed #username-display,
+                #side-nav.nav-collapsed #user-role-display,
+                #side-nav.nav-collapsed .user-avatar-container > img, /* Hide placeholder img */
+                #side-nav.nav-collapsed .user-avatar-container > .avatar-fallback /* Hide text fallback if nav is collapsed */ {
+                    display: none;
+                }
+
+                #side-nav.nav-collapsed #nav-main-toggle-btn + .nav-link-text { /* Hide "MENU" text */
+                    display: none;
+                }
+
+                #side-nav.nav-collapsed .nav-link,
+                #side-nav.nav-collapsed #settings-toggle-btn,
+                #side-nav.nav-collapsed #theme-toggle-btn,
+                #side-nav.nav-collapsed .user-info-container-nav a { /* For logout link in nav */
+                    justify-content: center;
+                }
+
+                #side-nav.nav-collapsed .user-avatar-container {
+                    justify-content: center; /* Center the icon fallback if avatar image is hidden */
+                }
+
+                    #side-nav.nav-collapsed .user-avatar-container > .avatar-icon-fallback {
+                        display: flex !important; /* Ensure icon fallback is visible */
+                    }
+
+
+        /* Completed Row Styling */
+        .forecast-completed-row td {
+            border-bottom-color: #bbf7d0; /* Tailwind: border-green-200 */
+        }
+
+        .dark .forecast-completed-row td {
+            border-bottom-color: #14532d; /* Tailwind: dark:border-green-800 */
+        }
+
+        /* Loading/Error states */
+        .loading td, .error td {
+            text-align: center;
+            padding: 1rem;
+            font-style: italic;
+            color: #6b7280; /* Tailwind: text-gray-500 */
+        }
+
+        .dark .loading td, .dark .error td {
+            color: #9ca3af; /* Tailwind: dark:text-gray-400 */
+        }
+
+        .error td {
+            color: #dc2626; /* Tailwind: text-red-600 */
+        }
+
+        .dark .error td {
+            color: #f87171; /* Tailwind: dark:text-red-400 */
+        }
+
+        /* Button styles (basic example, customize further) */
+        .button {
+            display: inline-block;
+            padding: 0.25rem 0.75rem; /* py-1 px-3 */
+            border-radius: 0.375rem; /* rounded-md */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+        }
+
+        .button-small {
+            padding: 0.125rem 0.5rem; /* py-0.5 px-2 */
+            font-size: 0.75rem; /* text-xs */
+        }
+
+        .button-secondary {
+            background-color: #e5e7eb; /* bg-gray-200 */
+            border-color: #d1d5db; /* border-gray-300 */
+            color: #374151; /* text-gray-700 */
+        }
+
+            .button-secondary:hover {
+                background-color: #d1d5db; /* hover:bg-gray-300 */
+            }
+
+        .dark .button-secondary {
+            background-color: #4b5563; /* dark:bg-gray-600 */
+            border-color: #6b7280; /* dark:border-gray-500 */
+            color: #d1d5db; /* dark:text-gray-300 */
+        }
+
+            .dark .button-secondary:hover {
+                background-color: #6b7280; /* dark:hover:bg-gray-500 */
+            }
+
+        .button-success {
+            background-color: #22c55e; /* bg-green-500 */
+            border-color: #16a34a; /* border-green-600 */
+            color: white;
+        }
+
+            .button-success:hover {
+                background-color: #16a34a; /* hover:bg-green-600 */
+                border-color: #15803d; /* hover:border-green-700 */
+            }
+
+        .dark .button-success { /* Ensure dark mode has sufficient contrast if needed, though Tailwind handles this well often */
+            background-color: #22c55e;
+            border-color: #16a34a;
+            color: #f9fafb; /* dark:text-gray-100 or white */
+        }
+
+            .dark .button-success:hover {
+                background-color: #16a34a;
+                border-color: #15803d;
+            }
+
+        .button-danger {
+            background-color: #ef4444; /* bg-red-500 */
+            border-color: #dc2626; /* border-red-600 */
+            color: white;
+        }
+
+            .button-danger:hover {
+                background-color: #dc2626; /* hover:bg-red-600 */
+                border-color: #b91c1c; /* hover:border-red-700 */
+            }
+
+        .dark .button-danger {
+            background-color: #ef4444;
+            border-color: #dc2626;
+            color: #f9fafb;
+        }
+
+            .dark .button-danger:hover {
+                background-color: #dc2626;
+                border-color: #b91c1c;
+            }
+
+        .button-warning {
+            background-color: #f59e0b; /* bg-amber-500 */
+            border-color: #d97706; /* border-amber-600 */
+            color: white; /* Text color for amber can sometimes be tricky, white is often fine */
+        }
+
+            .button-warning:hover {
+                background-color: #d97706; /* hover:bg-amber-600 */
+                border-color: #b45309; /* hover:border-amber-700 */
+            }
+
+        .dark .button-warning {
+            background-color: #f59e0b;
+            border-color: #d97706;
+            color: #1f2937; /* Dark text for better contrast on amber in dark mode */
+        }
+
+            .dark .button-warning:hover {
+                background-color: #d97706;
+                border-color: #b45309;
+            }
+
+        /* Spacing between action buttons */
+        .forecast-action-cell button + button {
+            margin-left: 0.5rem; /* ml-2 */
+        }
+
+        /* Ensure main content area scrolls if needed */
+        .main-content-area {
+            overflow-y: auto;
+        }
+
+        /* Basic Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 0.5rem; /* p-2 */
+            border-bottom-width: 1px;
+            border-color: #e5e7eb; /* gray-200 */
+            text-align: left;
+            vertical-align: top; /* Changed from middle to top for consistency */
+            font-size: 0.875rem; /* text-sm */
+        }
+
+        .dark th, .dark td {
+            border-color: #374151; /* dark:border-gray-700 */
+        }
+
+        thead th {
+            font-weight: 600; /* font-semibold */
+            color: #4b5563; /* text-gray-600 */
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background-color: #f9fafb; /* bg-gray-50 */
+        }
+
+        .dark thead th {
+            color: #9ca3af; /* dark:text-gray-400 */
+            background-color: #1f2937; /* dark:bg-gray-800 */
+        }
+
+        tbody tr:hover {
+            background-color: #f9fafb; /* hover:bg-gray-50 */
+        }
+
+        .dark tbody tr:hover {
+            background-color: #374151; /* dark:hover:bg-gray-700 - adjusted for better visibility */
+        }
+
+        tfoot td {
+            border-top-width: 2px;
+            border-color: #d1d5db; /* border-gray-300 */
+        }
+
+        .dark tfoot td {
+            border-color: #4b5563; /* dark:border-gray-600 */
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        /* Collapsible Section Styling */
+        .collapsible-content.hidden {
+            display: none;
+        }
+
+        .toggle-icon {
+            transition: transform 0.2s ease-in-out;
+            display: inline-block;
+        }
+
+        .collapsible.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        /* Avatar Fallback Styling */
+        .avatar-fallback {
+            display: none; /* Hidden by default, shown by JS if image fails */
+            width: 32px;
+            height: 32px;
+            border-radius: 9999px; /* rounded-full */
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.75rem; /* text-xs */
+        }
+
+        .avatar-icon-fallback { /* For collapsed nav */
+            display: none; /* Hidden by default, shown if nav collapsed and image fails */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-slate-900 text-gray-900 dark:text-slate-300 font-[Inter,sans-serif] flex flex-col min-h-screen">
+
+    <header class="app-header flex justify-between items-center py-3 border-b bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 px-4 md:px-6 lg:px-8 sticky top-0 z-20 flex-shrink-0 shadow-sm">
+        <div class="title-container flex items-center space-x-3">
+            <img src="/static/CMRP Logo Dark.svg" alt="CMRP Logo" class="header-logo h-8 w-auto block dark:hidden" onerror="this.style.display='none'; this.nextElementSibling.style.display='none'; this.parentElement.querySelector('.logo-fallback-initials').style.display='flex';">
+            <img src="/static/CMRP Logo Light.svg" alt="CMRP Logo Dark" class="header-logo h-8 w-auto hidden dark:block" onerror="this.style.display='none'; this.previousElementSibling.style.display='none'; this.parentElement.querySelector('.logo-fallback-initials').style.display='flex';">
+            <div style="display: none;" class="logo-fallback-initials h-8 w-8 bg-blue-200 dark:bg-sky-700 rounded flex items-center justify-center text-sm font-bold text-blue-700 dark:text-sky-200">DS</div>
+            <h1 class="text-xl font-semibold text-gray-800 dark:text-slate-200">DS Project Monitoring</h1>
+        </div>
+
+        <div class="header-actions flex items-center space-x-4">
+            <a href="/updates_log" class="button button-secondary button-small" title="View All Updates">Updates Log</a>
+            <div class="user-info-container flex items-center space-x-3 border-l border-gray-300 dark:border-slate-600 pl-4">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-gray-600 dark:text-slate-400">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 0 1 6 0z" />
+                </svg>
+                <span id="user-display-name" class="text-sm font-medium text-gray-700 dark:text-slate-300">User Name</span>
+                <button id="logout-btn" class="button button-danger button-small flex items-center space-x-1" title="Logout">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
+                    </svg>
+                    <span class="hidden sm:inline">Logout</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex flex-col md:flex-row main-flex-container flex-grow p-4 gap-4">
+        <nav id="side-nav" class="w-full md:w-56 lg:w-56 p-4 bg-white dark:bg-slate-800 rounded-lg shadow-md flex-shrink-0 relative flex flex-col border border-gray-200 dark:border-slate-700">
+            <div class="flex justify-start items-center mb-3 pb-2 border-b border-gray-200 dark:border-slate-700 flex-shrink-0">
+                <button id="nav-main-toggle-btn" title="Toggle Navigation" class="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
+                </button>
+                <span class="nav-link-text ml-2 text-xs text-gray-500 dark:text-slate-500">MENU</span>
+            </div>
+            <div id="nav-content" class="flex-grow overflow-y-auto">
+                <ul class="space-y-1">
+                    <li><a href="/" title="Dashboard" class="nav-link block py-1.5 text-gray-700 dark:text-slate-300 hover:text-black dark:hover:text-white flex items-center px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg><span class="nav-link-text ml-2">Dashboard</span></a></li>
+                    <li><a href="/forecast" title="View Forecast Page" class="nav-link block py-1.5 text-blue-600 dark:text-sky-400 flex items-center px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded font-semibold bg-gray-100 dark:bg-slate-700"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.307a11.95 11.95 0 0 1 5.814-5.519l2.74-1.22m0 0-5.94-2.28m5.94 2.28-2.28 5.941" /></svg><span class="nav-link-text ml-2">Forecast</span></a></li>
+                    <li><a href="/project_gantt" title="View Project Gantt (Requires Project ID)" class="nav-link block py-1.5 text-gray-700 dark:text-slate-300 hover:text-black dark:hover:text-white flex items-center px-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 flex-shrink-0"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"></path></svg><span class="nav-link-text ml-2">Project Gantt</span></a></li>
+                    <li><a href="/static/Story.html" class="nav-link flex items-center p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group"><svg class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"></path></svg><span class="nav-link-text ml-2">Story Mode</span></a></li>
+                    <li>
+                        <button id="settings-toggle-btn" class="nav-link flex items-center justify-between w-full p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group">
+                            <div class="flex items-center"><svg class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg><span class="nav-link-text">Settings & Logs</span></div>
+                            <svg id="settings-arrow" class="w-4 h-4 nav-link-text transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <ul id="settings-submenu" class="hidden mt-1 space-y-1 pl-4">
+                            <li><a href="/updates_log.html" class="nav-link flex items-center p-2 text-sm rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group"><span class="nav-link-text">Project Updates Log</span></a></li>
+                            <li><a href="/mrf_items_log.html" class="nav-link flex items-center p-2 text-sm rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group"><span class="nav-link-text">MRF Items Log</span></a></li>
+                            <li><a href="/clients.html" class="nav-link flex items-center p-2 text-sm rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group"><span class="nav-link-text">Clients & Users</span></a></li>
+                        </ul>
+                    </li>
+                </ul>
+                <div class="mt-auto pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div class="nav-section-title text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 nav-link-text">Theme</div>
+                    <button id="theme-toggle-btn" class="w-full flex items-center p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group">
+                        <svg id="theme-icon-light" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <svg id="theme-icon-dark" class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+                        <span class="nav-link-text">Toggle Theme</span>
+                    </button>
+                    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 user-info-container-nav">
+                        <div class="nav-section-title text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 nav-link-text">Account</div>
+                        <div class="flex items-center mb-2 p-2 user-avatar-container">
+                            <img src="https://via.placeholder.com/32" alt="User Avatar" class="h-8 w-8 rounded-full mr-2 nav-link-text">
+                            <div class="avatar-fallback bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 nav-link-text">U</div>
+                            <svg class="w-8 h-8 p-1.5 text-gray-500 dark:text-gray-400 avatar-icon-fallback" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 0 1 6 0z" />
+                            </svg>
+                            <div>
+                                <div class="font-medium nav-link-text" id="username-display">User Name</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400 nav-link-text" id="user-role-display">User Role</div>
+                            </div>
+                        </div>
+                        <a href="/logout" class="nav-link flex items-center p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 group">
+                            <svg class="w-5 h-5 mr-3 text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                            <span class="nav-link-text">Logout</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="w-full md:flex-1 space-y-4 main-content-area">
+            <div id="feedbackMessage" class="feedback sticky top-[calc(theme(spacing.12)+1px)] z-10" role="alert"></div>
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-800 dark:text-slate-200">Monthly Forecast Entries (Year: <span id="forecast-year">2025</span>)</h2>
+                <div class="flex space-x-2">
+                    <button id="auto-move-btn" class="button button-secondary button-small">Auto-Move Incomplete</button>
+                    <button id="export-forecast-btn" class="button button-primary button-small">Export All to CSV</button>
+                </div>
+            </div>
+
+            <div id="monthly-forecast-container" class="space-y-6">
+                <section id="forecast-jan-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                    <button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400"
+                            aria-expanded="false" aria-controls="forecast-jan-content" data-target="forecast-jan-content">
+                        January <span id="forecast-year-jan">2025</span>
+                        <span class="toggle-icon text-sm transform -rotate-90">▼</span>
+                    </button>
+                    <div id="forecast-jan-content" class="collapsible-content mt-2 hidden">
+                        <div class="table-container overflow-x-auto">
+                            <table class="w-full text-sm text-left table-auto border-collapse">
+                                <thead class="bg-gray-50 dark:bg-slate-900/50">
+                                    <tr>
+                                        <th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th>
+                                        <th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th>
+                                        <th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th>
+                                        <th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th>
+                                        <th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th>
+                                        <th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th>
+                                        <th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th>
+                                        <th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="forecast-table-body-jan" class="divide-y divide-gray-200 dark:divide-slate-700">
+                                    <tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading January forecast...</td></tr>
+                                </tbody>
+                                <tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold">
+                                    <tr>
+                                        <td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td>
+                                        <td id="total-forecast-jan" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td>
+                                        <td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600">
+                                            <span id="total-invoiced-jan" class="text-xs block font-normal">(Inv: ₱0.00)</span>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+                <section id="forecast-feb-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
+                    <button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-feb-content" data-target="forecast-feb-content">February <span id="forecast-year-feb">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button>
+                    <div id="forecast-feb-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-feb" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading February forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-feb" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-feb" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div>
+                </section>
+                <section id="forecast-mar-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-mar-content" data-target="forecast-mar-content">March <span id="forecast-year-mar">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-mar-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-mar" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading March forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-mar" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-mar" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-apr-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-apr-content" data-target="forecast-apr-content">April <span id="forecast-year-apr">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-apr-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-apr" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading April forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-apr" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-apr" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-may-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-may-content" data-target="forecast-may-content">May <span id="forecast-year-may">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-may-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-may" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading May forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-may" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-may" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-jun-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-jun-content" data-target="forecast-jun-content">June <span id="forecast-year-jun">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-jun-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-jun" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading June forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-jun" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-jun" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-jul-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-jul-content" data-target="forecast-jul-content">July <span id="forecast-year-jul">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-jul-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-jul" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading July forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-jul" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-jul" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-aug-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-aug-content" data-target="forecast-aug-content">August <span id="forecast-year-aug">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-aug-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-aug" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading August forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-aug" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-aug" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-sep-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-sep-content" data-target="forecast-sep-content">September <span id="forecast-year-sep">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-sep-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-sep" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading September forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-sep" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-sep" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-oct-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-oct-content" data-target="forecast-oct-content">October <span id="forecast-year-oct">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-oct-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-oct" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading October forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-oct" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-oct" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-nov-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-nov-content" data-target="forecast-nov-content">November <span id="forecast-year-nov">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-nov-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-nov" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading November forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-nov" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-nov" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+                <section id="forecast-dec-section" class="collapsible collapsed bg-white dark:bg-slate-800/50 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4"><button type="button" class="toggle-section-btn flex items-center justify-between w-full py-2 text-lg font-semibold text-left text-blue-600 dark:text-sky-400" aria-expanded="false" aria-controls="forecast-dec-content" data-target="forecast-dec-content">December <span id="forecast-year-dec">2025</span><span class="toggle-icon text-sm transform -rotate-90">▼</span></button><div id="forecast-dec-content" class="collapsible-content mt-2 hidden"><div class="table-container overflow-x-auto"><table class="w-full text-sm text-left table-auto border-collapse"><thead class="bg-gray-50 dark:bg-slate-900/50"><tr><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project #</th><th class="px-2 py-2 text-left border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Name</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">PIC</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Project Status</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst %</th><th class="px-2 py-2 text-right border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Fcst Amount</th><th class="px-2 py-2 text-center border-b border-gray-200 dark:border-slate-700 font-semibold text-gray-600 dark:text-slate-300">Actions</th></tr></thead><tbody id="forecast-table-body-dec" class="divide-y divide-gray-200 dark:divide-slate-700"><tr class="loading"><td colspan="8" class="text-center p-4 text-gray-500 dark:text-slate-400">Loading December forecast...</td></tr></tbody><tfoot class="bg-gray-100 dark:bg-slate-700/50 font-semibold"><tr><td colspan="6" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">Month Totals:</td><td id="total-forecast-dec" class="px-2 py-1 text-right border-t-2 border-gray-300 dark:border-slate-600">₱0.00</td><td class="px-2 py-1 text-center border-t-2 border-gray-300 dark:border-slate-600"><span id="total-invoiced-dec" class="text-xs block font-normal">(Inv: ₱0.00)</span></td></tr></tfoot></table></div></div></section>
+            </div>
+        </main>
+    </div>
+
+    <footer class="app-footer text-center py-3 border-t bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700 text-xs text-gray-600 dark:text-slate-400 flex-shrink-0">
+        © <span id="current-year">2024</span> DS Project Monitoring. All Rights Reserved.
+        If you encounter issues, please check your internet connection and ensure external resources (CDNs for styles/fonts) are accessible.
+    </footer>
+
+    <script src="/static/script.js"></script>
+    <script src="/static/Forecast.js"></script>
+    <script>
+        // Small inline script for dynamic year in footer
+        document.getElementById('current-year').textContent = new Date().getFullYear();
+
+        // Enhanced logo fallback script
+        document.querySelectorAll('.header-logo').forEach(logoImg => {
+            logoImg.onerror = function () {
+                // Hide this failed logo
+                this.style.display = 'none';
+                // Try to hide the other variant if it exists
+                if (this.previousElementSibling && this.previousElementSibling.classList.contains('header-logo')) {
+                    this.previousElementSibling.style.display = 'none';
+                } else if (this.nextElementSibling && this.nextElementSibling.classList.contains('header-logo')) {
+                    this.nextElementSibling.style.display = 'none';
+                }
+                // Show the initials fallback
+                const fallbackInitials = this.parentElement.querySelector('.logo-fallback-initials');
+                if (fallbackInitials) fallbackInitials.style.display = 'flex';
+            };
+        });
+
+        // Fallback for the placeholder avatar in the nav
+        const navUserAvatarImg = document.querySelector('#side-nav .user-avatar-container img');
+        if (navUserAvatarImg) {
+            navUserAvatarImg.onerror = function () {
+                this.style.display = 'none'; // Hide the broken image
+                const textFallback = this.nextElementSibling;
+                const iconFallback = textFallback ? textFallback.nextElementSibling : null;
+
+                // Ensure textFallback and iconFallback are valid elements before trying to set style
+                if (!textFallback || !iconFallback) {
+                    console.error("Fallback elements not found next to the avatar image in forecast.html. Structure may have changed.");
+                    return;
+                }
+
+                if (document.getElementById('side-nav').classList.contains('nav-collapsed')) {
+                    iconFallback.style.display = 'flex';
+                    textFallback.style.display = 'none'; // Explicitly hide text fallback
+                } else {
+                    textFallback.style.display = 'flex';
+                    iconFallback.style.display = 'none'; // Explicitly hide icon fallback
+                }
+            };
+            // Trigger error if src is invalid to test fallback (for development only)
+            // setTimeout(() => { if(navUserAvatarImg) navUserAvatarImg.src = "invalid-path-to-trigger-error"; }, 100);
+        }
+    </script>
+</body>
+</html>

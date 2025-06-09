@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Request Form (MRF)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Arial+Narrow:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Arial Narrow', 'Inter', sans-serif;
+            background-color: #f4f7f6; 
+        }
+        .form-container {
+            max-width: 1200px; 
+            margin: 1.5rem auto; 
+            padding: 1.5rem;
+            background-color: #ffffff; 
+            border-radius: 0.5rem; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+        }
+        th, td {
+            padding: 0.3rem 0.25rem; 
+            text-align: left;
+            border: 1px solid #e2e8f0; 
+            font-size: 0.7rem; 
+            vertical-align: top;
+        }
+        th {
+            background-color: #f8fafc; 
+            font-weight: 600;
+            color: #334155; 
+            font-size: 0.65rem; 
+            white-space: nowrap;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .header-section {
+            display: grid;
+            grid-template-columns: 1fr; 
+            gap: 0.75rem 1.5rem; 
+            align-items: start;
+            margin-bottom: 1.5rem;
+        }
+        @media (min-width: 1024px) { 
+            .header-section {
+                grid-template-columns: repeat(2, 1fr); 
+            }
+        }
+        .header-section dl {
+            display: grid;
+            grid-template-columns: auto 1fr; 
+            gap: 0.1rem 0.5rem; 
+            align-items: center; /* Align items vertically */
+            margin-bottom: 0.25rem; 
+        }
+        .header-section dt {
+            font-weight: 600;
+            color: #475569; 
+            font-size: 0.75rem;
+            padding-right: 0.5rem;
+            white-space: nowrap;
+            align-self: center; /* Ensure dt is centered with dd content */
+        }
+        .header-section dd {
+            display: flex; /* For aligning prefix and suffix */
+            align-items: center; /* Align items vertically */
+            border-bottom: 1px solid #e2e8f0; 
+        }
+        .header-section input[type="text"],
+        .header-section input[type="date"],
+        .header-section select,
+        .header-section .header-static-prefix { /* Style for static display elements */
+            color: #1e293b; 
+            border: none;
+            /* border-bottom: 1px solid #e2e8f0; */ /* Border is now on dd */
+            padding: 0.25rem 0.1rem; 
+            border-radius: 0; 
+            font-size: 0.75rem;
+            /* width: 100%; */ /* Width will be handled by flex */
+            font-family: 'Arial Narrow', 'Inter', sans-serif;
+            background-color: transparent;
+            box-shadow: none;
+            outline: none;
+            min-height: calc(0.75rem + 0.25rem * 2 + 1px); /* Match input height */
+            /* display: block; */ /* No longer block, handled by flex */
+        }
+         .header-section .header-static-prefix {
+            background-color: #f9fafb;
+            color: #374151;
+            padding-right: 0.05rem; /* Small space before suffix */
+            white-space: nowrap;
+        }
+        .header-section #formNoSuffix {
+            flex-grow: 1; /* Allow suffix input to take remaining space */
+            border: none;
+            padding: 0.25rem 0.1rem;
+            font-size: 0.75rem;
+            font-family: 'Arial Narrow', 'Inter', sans-serif;
+            background-color: #fff; /* White background to indicate editability */
+            outline: none;
+        }
+        .header-section #formNoSuffix:focus {
+            /* Add a subtle focus style if desired, e.g., a light blue shadow or border */
+             box-shadow: 0 0 0 1px #3b82f6;
+        }
+
+
+        .header-section input[readonly], .header-section select[disabled] {
+            background-color: #f9fafb; 
+            color: #6b7280; 
+            cursor: not-allowed;
+        }
+        .header-section input[type="text"]:focus,
+        .header-section input[type="date"]:focus,
+        .header-section select:focus {
+            border-bottom-color: #3b82f6; /* For other inputs with bottom border */
+        }
+        /* Ensure inputs without explicit dd parent still get bottom border */
+        .header-section dl dd > input[type="text"]:not(#formNoSuffix),
+        .header-section dl dd > input[type="date"],
+        .header-section dl dd > select {
+             width: 100%; /* Make them take full width of dd if they are the only child */
+        }
+        .header-section dl dd:not(:has(#formNoSuffix)) input,
+        .header-section dl dd:not(:has(#formNoSuffix)) select {
+             border-bottom: 1px solid #e2e8f0; /* Re-apply border if not formNo container */
+        }
+         /* Adjust dd for non-formNo fields to remove its own border if children have it */
+        .header-section dl dd:has(input[type="text"]:not(#formNoSuffix)),
+        .header-section dl dd:has(input[type="date"]),
+        .header-section dl dd:has(select) {
+            border-bottom: none; /* Remove dd border if child input/select has it */
+        }
+
+
+        .table-input {
+            width: 100%;
+            min-width: 40px; 
+            padding: 0.2rem; 
+            border: 1px solid #d1d5db; 
+            border-radius: 0.25rem; 
+            font-size: 0.7rem; 
+            font-family: 'Arial Narrow', 'Inter', sans-serif;
+        }
+        .table-input.number-input { text-align: right; }
+        .table-input:read-only { background-color: #f3f4f6; color: #6b7280; cursor: not-allowed; }
+
+        .action-button { 
+            background-color: #dc2626; color: white; padding: 0.2rem 0.4rem; border-radius: 0.25rem;
+            font-size: 0.65rem; border: none; cursor: pointer; font-family: 'Arial Narrow', 'Inter', sans-serif;
+        }
+        .action-button:hover { background-color: #b91c1c; }
+
+        .add-row-button { 
+            background-color: #2563eb; color: white; padding: 0.5rem 1rem; border-radius: 0.375rem;
+            font-size: 0.8rem; border: none; cursor: pointer; transition: background-color 0.2s;
+            font-family: 'Arial Narrow', 'Inter', sans-serif;
+        }
+        .add-row-button:hover { background-color: #1d4ed8; }
+
+        .control-button { 
+            color: white; padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.8rem;
+            border: none; cursor: pointer; transition: background-color 0.2s; margin-left: 0.5rem;
+            font-family: 'Arial Narrow', 'Inter', sans-serif;
+        }
+        .export-button { background-color: #10b981; } 
+        .export-button:hover { background-color: #059669; }
+        .pdf-export-button { background-color: #ef4444; } 
+        .pdf-export-button:hover { background-color: #dc2626; }
+        .save-data-button { background-color: #3b82f6; } 
+        .save-data-button:hover { background-color: #2563eb; }
+        .load-data-button { background-color: #f59e0b; } 
+        .load-data-button:hover { background-color: #d97706; }
+        
+        .footer-input { 
+             margin-top: 0.1rem; padding: 0.25rem 0.5rem; border: 1px solid #d1d5db; 
+             border-radius: 0.375rem; width: 100%; font-size: 0.75rem; 
+             font-family: 'Arial Narrow', 'Inter', sans-serif;
+         }
+         .footer-input:focus {
+           border-color: #3b82f6; outline: none; box-shadow: 0 0 0 1px #3b82f6;
+         }
+
+        @media print { 
+            body { font-family: 'Arial Narrow', 'Inter', sans-serif !important; background-color: #ffffff; font-size: 8pt; } 
+            .form-container { margin: 0; padding: 0.5cm; box-shadow: none; border-radius: 0; max-width: 100%; }
+            .no-print { display: none !important; }
+            th, td { font-size: 7pt; padding: 0.1rem; border: 1px solid #ccc !important; } 
+            table { width: 100% !important; border-collapse: collapse; }
+            .header-section input, .header-section select, .header-section textarea, .table-input, .footer-input, 
+            .header-section .header-static-prefix, .header-section #formNoSuffix, #formNoSuffixStaticPrint /* Include the static print span */ {
+                border: none !important; padding: 0.05rem !important; background-color: transparent !important; 
+                -webkit-print-color-adjust: exact; color-adjust: exact; 
+                font-family: 'Arial Narrow', 'Inter', sans-serif !important; box-shadow: none !important;
+                margin-top: 0.05rem !important; font-size: 8pt !important; 
+                display: inline !important; /* Ensure they display inline for print */
+                vertical-align: baseline !important;
+            }
+            .header-section dd { border-bottom: none !important; } /* Remove dd border for print */
+            .header-section input[readonly], .header-section select[disabled] { background-color: transparent !important; }
+            .table-input:read-only { background-color: transparent !important; }
+            .footer-label-print { margin-bottom: 0.3rem !important; font-size: 8pt !important; }
+            .static-text-value.footer-label-static { margin-bottom: 0.3rem !important; font-size: 8pt !important; }
+            .static-text-value.footer-static { font-size: 8pt !important; padding: 0.05rem 0.1rem; }
+            .mrf-logo { max-height: 40px !important; width: auto !important; } 
+            .header-static-print { /* General class for other static header values in print */
+                 font-size: 8pt !important; padding: 0.05rem !important; display: block !important;
+            }
+        }
+
+        .static-text-value { 
+            display: inline-block; padding: 0.3rem 0.5rem; font-size: 0.75rem;
+            line-height: 1.3; white-space: pre-wrap; font-family: 'Arial Narrow', 'Inter', sans-serif;
+        }
+
+        .static-text-value.footer-static {
+            display: block; padding: 0.1rem 0.25rem; font-size: 0.75rem; 
+            margin-top: 0.05rem; line-height: 1.2; 
+        }
+        .static-text-value.footer-label-static { margin-bottom: 0.3rem; }
+        .table-input-static {
+            display: inline-block; padding: 0.2rem; font-size: 0.7rem;
+            line-height: 1.3; white-space: pre-wrap; font-family: 'Arial Narrow', 'Inter', sans-serif;
+        }
+        .table-input-static.number-input { text-align: right; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="form-container">
+        <header class="mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center space-x-3">
+                    <img src="/CMRP Logo Dark.svg" alt="CMRP Logo" class="mrf-logo h-10 w-auto" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div style="display: none;" class="logo-fallback h-10 w-10 bg-blue-200 rounded flex items-center justify-center text-sm font-bold text-blue-700">CMRP</div>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-700 text-center flex-grow">MATERIAL REQUEST FORM</h1>
+                 <div class="w-10"></div> </div>
+            <div class="header-section">
+                <div>
+                    <dl><dt>Project Name:</dt>
+                        <dd>
+                            <select id="projectName" onchange="populateProjectDetails(this.value)">
+                                <option value="">Select Project</option>
+                                </select>
+                        </dd>
+                    </dl>
+                    <dl><dt>Project Number:</dt><dd><input type="text" id="projectNumber" placeholder="Auto-populated" readonly></dd></dl>
+                    <dl><dt>Client:</dt><dd><input type="text" id="client" placeholder="Auto-populated" readonly></dd></dl>
+                    <dl><dt>Site Location:</dt><dd><input type="text" id="siteLocation" placeholder="Enter Site Location"></dd></dl>
+                    <dl><dt>Project Phase:</dt><dd><input type="text" id="projectPhase" value="Execution" readonly></dd></dl>
+                </div>
+                <div>
+                    <dl><dt>Form No.:</dt>
+                        <dd>
+                            <span id="formNoPrefix" class="header-static-prefix"></span>
+                            <input type="text" id="formNoSuffix" placeholder="001" maxlength="5" size="5">
+                        </dd>
+                    </dl>
+                    <dl><dt>MRF Date:</dt><dd><input type="date" id="mrfDate"></dd></dl>
+                    </div>
+            </div>
+        </header>
+
+        <main>
+            <h2 class="text-lg font-semibold text-gray-700 mb-2">I. Materials Requested</h2>
+            <div class="table-responsive">
+                <table id="mrfTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 4%;">No.</th>
+                            <th style="width: 12%;">Part Number</th>
+                            <th style="width: 12%;">Brand Name</th>
+                            <th style="width: 25%;">Description</th>
+                            <th style="width: 7%;" class="text-right">Qty</th>
+                            <th style="width: 7%;">UOM</th>
+                            <th style="width: 10%;">Install. Date</th>
+                            <th style="width: 20%;">Remarks</th>
+                            <th class="no-print" style="width: 3%;">Act</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mrfTableBody">
+                        </tbody>
+                </table>
+            </div>
+            <div class="mt-3 flex justify-start space-x-2 no-print">
+                <button onclick="addMrfRow()" class="add-row-button">Add Material</button>
+            </div>
+        </main>
+
+        <footer class="mt-10 pt-6 border-t border-gray-300 text-xs text-gray-600">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4"> 
+                <div>
+                    <p class="font-semibold mb-1 footer-label-print">Prepared by:</p>
+                    <input type="text" id="footerPreparedByName" placeholder="Name & Signature" class="footer-input">
+                    <input type="text" id="footerPreparedByDesignation" placeholder="Designation" class="footer-input"> 
+                </div>
+                <div>
+                    <p class="font-semibold mb-1 footer-label-print">Approved by:</p>
+                    <input type="text" id="footerApprovedByName" placeholder="Name & Signature" class="footer-input">
+                    <input type="text" id="footerApprovedByDesignation" placeholder="Designation" class="footer-input"> 
+                </div>
+                <div>
+                    <p class="font-semibold mb-1 footer-label-print">Noted by:</p>
+                    <input type="text" id="footerNotedByName" placeholder="Name & Signature" class="footer-input">
+                    <input type="text" id="footerNotedByDesignation" placeholder="Designation" class="footer-input"> 
+                </div>
+            </div>
+            <div class="mt-6 text-center text-xs text-gray-500">
+                <p>Page <span id="pageNumber">1</span> of <span id="totalPages">1</span></p>
+            </div>
+            <div class="mt-3 text-center no-print">
+                <button onclick="prepareAndPrint()" class="control-button bg-blue-600 hover:bg-blue-700">Print MRF</button>
+                <button onclick="exportToExcel()" class="control-button export-button">Export to Excel</button>
+                <button onclick="exportToPDF()" class="control-button pdf-export-button">Export to PDF</button>
+                <button onclick="saveDataToServer()" class="control-button save-data-button">Save to DB</button>
+                <button onclick="showLoadModal()" class="control-button load-data-button">Load from DB</button>
+            </div>
+        </footer>
+    </div>
+
+    <div id="loadMrfModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full no-print hidden">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Load MRF from Database</h3>
+                <div class="mt-2 px-7 py-3">
+                    <label for="mrfList" class="block text-sm font-medium text-gray-700 text-left">Select MRF to Load:</label>
+                    <select id="mrfList" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                        </select>
+                    <input type="text" id="loadMrfByFormNo" placeholder="Or Enter Form No." class="mt-2 p-2 border rounded-md w-full">
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="confirmLoadMrf" class="px-4 py-2 bg-green-500 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-300">
+                        Load Selected
+                    </button>
+                     <button id="loadByFormNoBtn" class="ml-2 px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-auto shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                        Load by Form No.
+                    </button>
+                    <button id="closeLoadModal" class="ml-2 px-4 py-2 bg-gray-300 text-gray-800 text-base font-medium rounded-md w-auto shadow-sm hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration for API base URL. Change if your API is hosted elsewhere.
+        const API_BASE_URL = '/api'; 
+        let projectMasterData = []; // Holds fetched project data
+
+        /**
+         * Fetches project data from the API or uses fallback demo data.
+         */
+        async function fetchProjects() {
+            console.log("Fetching projects from:", `${API_BASE_URL}/projects`);
+            try {
+                const response = await fetch(`${API_BASE_URL}/projects`); 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                projectMasterData = await response.json();
+                populateProjectDropdown();
+                handleUrlParams(); 
+            } catch (error) {
+                console.error("Could not fetch projects:", error);
+                alert("Error fetching project list from server. Please ensure the backend is running and you are logged in. Falling back to demo data.");
+                projectMasterData = [ 
+                    { projectName: "Proscenium RPAT and Museum BMS", projectNumber: "CMRP21090329", client: "ACI" },
+                    { projectName: "Amherst OT Network Devices", projectNumber: "CMRP24020067", client: "Unilab" }
+                ];
+                populateProjectDropdown();
+                const currentProjectNumber = document.getElementById('projectNumber').value;
+                generateAndDisplayFormNo(currentProjectNumber); 
+                handleUrlParams(); 
+            }
+        }
+
+        /**
+         * Populates the project name dropdown with fetched or demo data.
+         */
+        function populateProjectDropdown() {
+            const projectSelect = document.getElementById('projectName');
+            const currentVal = projectSelect.value; 
+            projectSelect.innerHTML = '<option value="">Select Project</option>'; 
+            projectMasterData.forEach(proj => {
+                const name = proj.projectName || proj.project_name; 
+                const option = document.createElement('option');
+                option.value = name; 
+                option.textContent = name;
+                projectSelect.appendChild(option);
+            });
+            if (Array.from(projectSelect.options).some(opt => opt.value === currentVal)) {
+                projectSelect.value = currentVal;
+            }
+        }
+        
+        /**
+         * Generates and displays the Form No. (prefix and suffix).
+         * @param {string} projectNumber - The current project number.
+         * @param {string} [loadedFormNo=null] - A complete form number loaded from data.
+         */
+        function generateAndDisplayFormNo(projectNumber, loadedFormNo = null) {
+            const formNoPrefixEl = document.getElementById('formNoPrefix');
+            const formNoSuffixEl = document.getElementById('formNoSuffix');
+            const defaultSuffix = "001"; // Default sequence start
+
+            if (loadedFormNo) {
+                const lastHyphenIndex = loadedFormNo.lastIndexOf('-');
+                if (lastHyphenIndex > -1 && lastHyphenIndex < loadedFormNo.length - 1) {
+                    formNoPrefixEl.textContent = loadedFormNo.substring(0, lastHyphenIndex + 1); 
+                    formNoSuffixEl.value = loadedFormNo.substring(lastHyphenIndex + 1);
+                } else { 
+                    formNoPrefixEl.textContent = projectNumber ? `${projectNumber}-MRF-` : "PROJECT-MRF-";
+                    formNoSuffixEl.value = lastHyphenIndex === -1 ? loadedFormNo : defaultSuffix; 
+                }
+            } else {
+                formNoPrefixEl.textContent = projectNumber ? `${projectNumber}-MRF-` : "PROJECT-MRF-";
+                formNoSuffixEl.value = defaultSuffix;
+            }
+        }
+
+
+        /**
+         * Populates project details (number, client) based on selected project name.
+         * Also updates the Form No. display.
+         */
+        function populateProjectDetails(selectedProjectName, projectNumberFromParam, clientFromParam, loadedFormNo = null) {
+            const projectNumberInput = document.getElementById('projectNumber');
+            const clientInput = document.getElementById('client');
+            const projectPhaseInput = document.getElementById('projectPhase'); 
+            const projectNameSelect = document.getElementById('projectName');
+            let currentProjectNumber = '';
+
+            if (selectedProjectName) {
+                const selectedProject = projectMasterData.find(proj => (proj.projectName || proj.project_name) === selectedProjectName);
+                if (selectedProject) {
+                    currentProjectNumber = projectNumberFromParam || selectedProject.projectNumber || selectedProject.project_no || '';
+                    projectNumberInput.value = currentProjectNumber;
+                    clientInput.value = clientFromParam || selectedProject.client || '';
+                    projectPhaseInput.value = "Execution"; 
+                    if (projectNameSelect.value !== selectedProjectName) {
+                        projectNameSelect.value = selectedProjectName;
+                    }
+                } else if (projectNumberFromParam !== undefined && clientFromParam !== undefined) {
+                    currentProjectNumber = projectNumberFromParam;
+                    projectNumberInput.value = currentProjectNumber;
+                    clientInput.value = clientFromParam;
+                    projectPhaseInput.value = "Execution";
+                }
+                 else { 
+                    projectNumberInput.value = "";
+                    clientInput.value = "";
+                    projectPhaseInput.value = "Execution"; 
+                }
+            } else { 
+                projectNumberInput.value = "";
+                clientInput.value = "";
+                projectPhaseInput.value = "Execution";
+            }
+            generateAndDisplayFormNo(currentProjectNumber, loadedFormNo); 
+        }
+
+        /**
+         * Handles URL parameters to pre-fill project details and make them read-only.
+         */
+        function handleUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const paramProjectName = urlParams.get('project_name');
+            const paramProjectNumber = urlParams.get('project_number');
+            const paramClient = urlParams.get('client');
+
+            if (paramProjectName) {
+                console.log("URL Params Found:", { paramProjectName, paramProjectNumber, paramClient });
+                const projectNameSelect = document.getElementById('projectName');
+                const projectNumberInput = document.getElementById('projectNumber');
+                const clientInput = document.getElementById('client');
+                
+                let optionExists = Array.from(projectNameSelect.options).some(opt => opt.value === paramProjectName);
+                if (!optionExists && paramProjectName) {
+                    const tempOption = document.createElement('option');
+                    tempOption.value = paramProjectName;
+                    tempOption.textContent = paramProjectName;
+                    projectNameSelect.appendChild(tempOption);
+                    console.log("Temporarily added project to dropdown from URL param:", paramProjectName);
+                }
+                projectNameSelect.value = paramProjectName; 
+                populateProjectDetails(paramProjectName, paramProjectNumber, paramClient); 
+
+                projectNameSelect.disabled = true; 
+                projectNumberInput.readOnly = true;
+                clientInput.readOnly = true;
+                projectNameSelect.classList.add('bg-gray-100', 'cursor-not-allowed'); 
+                projectNumberInput.classList.add('bg-gray-100'); 
+                clientInput.classList.add('bg-gray-100');
+            } else {
+                document.getElementById('projectName').disabled = false;
+                document.getElementById('projectNumber').readOnly = true; 
+                document.getElementById('client').readOnly = true; 
+                document.getElementById('projectName').classList.remove('bg-gray-100', 'cursor-not-allowed');
+                generateAndDisplayFormNo(document.getElementById('projectNumber').value); 
+            }
+        }
+
+        /**
+         * Adds a new row to the MRF table.
+         * @param {object} [data=null] - Optional data to pre-fill the row. Expects an object like { values: { itemNo: ..., partNo: ... } }
+         */
+        function addMrfRow(data = null) {
+            const tableBody = document.getElementById('mrfTableBody');
+            const newRow = tableBody.insertRow(-1); 
+            const defaultValues = {
+                itemNo: tableBody.rows.length + 1, // Start itemNo from 1 for new rows
+                partNo: "", brandName: "", description: "", 
+                qty: "1", uom: "", installDate: new Date().toISOString().split('T')[0], 
+                remarks: ""
+            };
+            // If data is passed (e.g., from loading), use its 'values' property, otherwise use defaults.
+            const rowData = data && data.values ? data.values : defaultValues;
+            
+            // If it's a new row (not from loaded data), ensure itemNo is based on current table length.
+            if (!data || !data.values) {
+                 rowData.itemNo = tableBody.rows.length; // Will be 1 for the first row, etc.
+            }
+
+
+            newRow.innerHTML = `
+                <td><input type="text" class="table-input" value="${rowData.itemNo}" title="Item Number" readonly></td>
+                <td><input type="text" class="table-input" value="${rowData.partNo || ''}" placeholder="Part Number" title="Part Number"></td>
+                <td><input type="text" class="table-input" value="${rowData.brandName || ''}" placeholder="Brand" title="Brand Name"></td>
+                <td><input type="text" class="table-input" value="${rowData.description || ''}" placeholder="Material Description" title="Description"></td>
+                <td><input type="number" class="table-input number-input" value="${rowData.qty || '1'}" step="1" min="0" title="Quantity"></td>
+                <td><input type="text" class="table-input" value="${rowData.uom || ''}" placeholder="e.g., pc, m, lot" title="Unit of Measure"></td>
+                <td><input type="date" class="table-input" value="${rowData.installDate || new Date().toISOString().split('T')[0]}" title="Target Installation Date"></td>
+                <td><input type="text" class="table-input" value="${rowData.remarks || ''}" placeholder="Remarks" title="Remarks"></td>
+                <td class="no-print"><button class="action-button" onclick="deleteMrfRow(this)" title="Delete Row">Del</button></td>
+            `;
+             updateRowNumbers(); 
+        }
+
+        /**
+         * Deletes a row from the MRF table.
+         */
+        function deleteMrfRow(button) {
+            const row = button.parentNode.parentNode; 
+            row.parentNode.removeChild(row);
+            updateRowNumbers(); 
+        }
+        
+        /**
+         * Updates the 'No.' column in the MRF table to reflect current row order.
+         */
+        function updateRowNumbers() {
+            const tableBody = document.getElementById('mrfTableBody');
+            Array.from(tableBody.rows).forEach((r, index) => {
+                if(r.cells[0] && r.cells[0].querySelector('input')) { 
+                    r.cells[0].querySelector('input').value = index + 1;
+                }
+            });
+        }
+        
+        /**
+         * Toggles form inputs between editable and static display for printing/PDF.
+         */
+        function toggleInputsToStatic(makeStatic) {
+            const inputsToToggle = document.querySelectorAll(
+                '.form-container input[type="text"]:not(#formNoSuffix), .form-container input[type="number"], .form-container input[type="date"], .form-container select, .form-container textarea, .footer-input'
+            );
+            const footerLabels = document.querySelectorAll('.footer-label-print');
+            const formNoPrefixEl = document.getElementById('formNoPrefix');
+            const formNoSuffixEl = document.getElementById('formNoSuffix');
+            const formNoSuffixStaticPrintId = 'formNoSuffixStaticPrint'; 
+
+
+            inputsToToggle.forEach(input => {
+                let staticElement = input.nextElementSibling;
+                if (staticElement && (staticElement.tagName === 'INPUT' || staticElement.tagName === 'SELECT' || staticElement.tagName === 'TEXTAREA' || staticElement.id === 'formNoSuffix')) {
+                    staticElement = null; 
+                }
+                
+                const isStaticValue = staticElement && staticElement.classList.contains('static-text-value');
+                const isTableStaticValue = staticElement && staticElement.classList.contains('table-input-static');
+                const isFooterInput = input.classList.contains('footer-input');
+                const isHeaderDd = input.closest('.header-section dd');
+                const isFormNoContainerMember = input.id === 'formNoPrefix' || input.id === 'formNoSuffix';
+                const isHeaderField = isHeaderDd && !isFormNoContainerMember;
+
+
+                if (makeStatic) {
+                    if (!staticElement || !(isStaticValue || isTableStaticValue )) { 
+                        staticElement = document.createElement(input.tagName === 'TEXTAREA' ? 'pre' : 'span'); 
+                        if (input.classList.contains('table-input')) {
+                            staticElement.className = 'table-input-static'; 
+                            if (input.classList.contains('number-input')) staticElement.classList.add('number-input');
+                        } else if (isFooterInput) {
+                            staticElement.className = 'static-text-value footer-static';
+                        } else if (isHeaderField) { 
+                            staticElement.className = 'static-text-value header-static-print'; 
+                        } else { 
+                            staticElement.className = 'static-text-value';
+                        }
+                        if (!isFormNoContainerMember) {
+                           input.parentNode.insertBefore(staticElement, input.nextSibling);
+                        }
+                    }
+                    
+                    if (input.tagName === 'SELECT') {
+                       if(staticElement) staticElement.textContent = input.selectedOptions.length > 0 ? input.selectedOptions[0].text : '';
+                    } else if (input.type === 'date' && input.value) {
+                        try { if(staticElement) staticElement.textContent = new Date(input.value + 'T00:00:00').toLocaleDateString(); } 
+                        catch (e) { if(staticElement) staticElement.textContent = input.value; } 
+                    } else {
+                         if (staticElement) staticElement.textContent = input.value; 
+                    }
+
+                    input.style.display = 'none'; 
+                    if (staticElement) { 
+                        staticElement.style.display = (isFooterInput || isHeaderField || input.classList.contains('table-input')) ? 'block' : ''; 
+                        if(input.classList.contains('table-input')) staticElement.style.display = 'inline-block'; 
+                    }
+                } else { 
+                    if (staticElement && (isStaticValue || isTableStaticValue)) {
+                        staticElement.style.display = 'none';
+                    }
+                    input.style.display = '';
+                }
+            });
+
+            if (makeStatic) {
+                formNoSuffixEl.style.display = 'none'; 
+                let staticSuffixSpan = document.getElementById(formNoSuffixStaticPrintId);
+                if (!staticSuffixSpan) {
+                    staticSuffixSpan = document.createElement('span');
+                    staticSuffixSpan.id = formNoSuffixStaticPrintId;
+                    staticSuffixSpan.style.fontFamily = formNoSuffixEl.style.fontFamily || "'Arial Narrow', 'Inter', sans-serif";
+                    staticSuffixSpan.style.fontSize = formNoSuffixEl.style.fontSize || "0.75rem";
+                    staticSuffixSpan.style.paddingLeft = "0.1rem"; 
+                    formNoSuffixEl.parentNode.insertBefore(staticSuffixSpan, formNoSuffixEl.nextSibling); 
+                }
+                staticSuffixSpan.textContent = formNoSuffixEl.value;
+                staticSuffixSpan.style.display = 'inline'; 
+                formNoPrefixEl.style.display = 'inline'; 
+            } else {
+                formNoSuffixEl.style.display = ''; 
+                let staticSuffixSpan = document.getElementById(formNoSuffixStaticPrintId);
+                if (staticSuffixSpan) {
+                    staticSuffixSpan.style.display = 'none'; 
+                }
+                formNoPrefixEl.style.display = ''; 
+            }
+
+
+             footerLabels.forEach(label => {
+                if (makeStatic) {
+                    if(!label.classList.contains('static-text-value')) { 
+                        label.classList.add('static-text-value', 'footer-label-static');
+                    }
+                } else {
+                     label.classList.remove('static-text-value', 'footer-label-static');
+                }
+            });
+        }
+
+        /**
+         * Prepares the form for printing and initiates the browser's print dialog.
+         */
+        function prepareAndPrint() {
+            toggleInputsToStatic(true); 
+            window.print();
+            toggleInputsToStatic(false); 
+        }
+        
+        /**
+         * Constructs the full Form Number from prefix and suffix.
+         */
+        function getFullFormNo() {
+            const prefix = document.getElementById('formNoPrefix')?.textContent || "";
+            const suffix = document.getElementById('formNoSuffix')?.value || "";
+            return `${prefix}${suffix}`;
+        }
+
+
+        /**
+         * Exports the form data to an Excel (XLSX) file.
+         */
+        function exportToExcel() {
+            const formNo = getFullFormNo() || "MRF_Data"; 
+            const wb = XLSX.utils.book_new(); 
+            let sheetData = []; 
+
+            const boldStyle = { font: { bold: true, name: "Arial Narrow", sz:9 } };
+            const titleStyle = { font: { bold: true, sz: 14, name: "Arial Narrow" }, alignment: { horizontal: "center" } };
+            const headerLabelStyle = { font: { bold: true, name: "Arial Narrow", sz:8 }, alignment: { horizontal: "left" } };
+            const headerValueStyle = { font: { name: "Arial Narrow", sz:8 }, alignment: { horizontal: "left" } };
+            const tableHeaderStyle = { font: { bold: true, name: "Arial Narrow", sz:8, color: { rgb: "FFFFFF" } }, alignment: { horizontal: "center", vertical: "center" }, fill: { fgColor: { rgb: "4A5568" } }, border: { top: { style: "thin"}, bottom: { style: "thin"}, left: { style: "thin"}, right: { style: "thin"} } };
+            const cellStyle = { font: { name: "Arial Narrow", sz:8 }, alignment: { vertical: "top"} }; 
+            const centerCellStyle = { ...cellStyle, alignment: {...cellStyle.alignment, horizontal: "center"} };
+            const rightCellStyle = { ...cellStyle, alignment: {...cellStyle.alignment, horizontal: "right"} };
+
+            sheetData.push([{ v: "MATERIAL REQUEST FORM", s: titleStyle }]); 
+            sheetData.push([]); 
+
+            const headerFields1 = [
+                ["Project Name:", document.getElementById('projectName')?.value],
+                ["Project Number:", document.getElementById('projectNumber')?.value],
+                ["Client:", document.getElementById('client')?.value],
+                ["Site Location:", document.getElementById('siteLocation')?.value],
+                ["Project Phase:", document.getElementById('projectPhase')?.value],
+            ];
+            const headerFields2 = [ 
+                ["Form No.:", formNo], 
+                ["MRF Date:", document.getElementById('mrfDate')?.value],
+            ];
+
+            const maxHeaderRows = Math.max(headerFields1.length, headerFields2.length);
+            for(let i=0; i < maxHeaderRows; i++) {
+                let row = [];
+                if (headerFields1[i]) {
+                    row.push({v: headerFields1[i][0], s: headerLabelStyle}); 
+                    row.push({v: headerFields1[i][1] || '', s: headerValueStyle}); 
+                } else { row.push(null, null); } 
+                row.push(null); 
+                 if (headerFields2[i]) {
+                    row.push({v: headerFields2[i][0], s: headerLabelStyle});
+                    row.push({v: headerFields2[i][1] || '', s: headerValueStyle});
+                } else { row.push(null, null); } 
+                sheetData.push(row);
+            }
+            sheetData.push([]); 
+
+            sheetData.push([{v: "I. Materials Requested", s: {...boldStyle, font:{...boldStyle.font, sz:10}}}]);
+            const excelHeaders = ["No.", "Part Number", "Brand Name", "Description", "Qty", "UOM", "Install. Date", "Remarks"];
+            sheetData.push(excelHeaders.map(h => ({ v: h, s: tableHeaderStyle }))); 
+
+            const tableBody = document.getElementById('mrfTableBody');
+            Array.from(tableBody.rows).forEach(tr => {
+                const rowData = [];
+                const inputs = tr.querySelectorAll('input');
+                rowData.push({ v: inputs[0]?.value, s: centerCellStyle }); 
+                rowData.push({ v: inputs[1]?.value, s: cellStyle }); 
+                rowData.push({ v: inputs[2]?.value, s: cellStyle }); 
+                rowData.push({ v: inputs[3]?.value, s: cellStyle }); 
+                rowData.push({ v: parseFloat(inputs[4]?.value) || 0, t:'n', s: rightCellStyle }); 
+                rowData.push({ v: inputs[5]?.value, s: centerCellStyle }); 
+                rowData.push({ v: inputs[6]?.value, s: centerCellStyle }); 
+                rowData.push({ v: inputs[7]?.value, s: cellStyle }); 
+                sheetData.push(rowData);
+            });
+            sheetData.push([]); 
+
+            const signatories = [
+                ["Prepared by:", document.getElementById('footerPreparedByName')?.value, document.getElementById('footerPreparedByDesignation')?.value],
+                ["Approved by:", document.getElementById('footerApprovedByName')?.value, document.getElementById('footerApprovedByDesignation')?.value],
+                ["Noted by:", document.getElementById('footerNotedByName')?.value, document.getElementById('footerNotedByDesignation')?.value]
+            ];
+            signatories.forEach(sigSet => {
+                sheetData.push([{v: sigSet[0], s: {...boldStyle, font:{...boldStyle.font, sz:9}}}]); 
+                sheetData.push([null, {v: sigSet[1] || '', s: {...cellStyle, font:{...cellStyle.font, sz:9}}}]); 
+                sheetData.push([null, {v: sigSet[2] || '', s: {...cellStyle, font:{...cellStyle.font, sz:9}}}]); 
+                sheetData.push([]); 
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            ws['!cols'] = [ {wch:5}, {wch:15}, {wch:15}, {wch:35}, {wch:8}, {wch:8}, {wch:12}, {wch:30} ];
+            const merges = [{s: {r:0, c:0}, e: {r:0, c:excelHeaders.length-1}}]; 
+            ws['!merges'] = merges;
+
+            XLSX.utils.book_append_sheet(wb, ws, "Material Request Form"); 
+            XLSX.writeFile(wb, `${formNo.replace(/[^a-z0-9_.-]/gi, '_')}.xlsx`); 
+        }
+
+        /**
+         * Exports the form content to a PDF file.
+         */
+        function exportToPDF() {
+            const { jsPDF } = window.jspdf; 
+            const content = document.querySelector(".form-container"); 
+            const buttonsToHide = document.querySelectorAll(".no-print"); 
+
+            buttonsToHide.forEach(btn => btn.style.visibility = 'hidden'); 
+            toggleInputsToStatic(true); 
+
+            html2canvas(content, { 
+                scale: 2, 
+                useCORS: true, 
+                logging: true, 
+                onclone: (clonedDoc) => {
+                    clonedDoc.querySelectorAll(".no-print").forEach(el => el.style.display = 'none');
+                }
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png', 0.95); 
+                const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' }); 
+                
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const margin = 25; 
+
+                const usableWidth = pdfWidth - (2 * margin);
+                const usableHeight = pdfHeight - (2 * margin);
+                const imgWidth = imgProps.width;
+                const imgHeight = imgProps.height;
+
+                const widthRatio = usableWidth / imgWidth;
+                const heightRatio = usableHeight / imgHeight;
+                const ratio = Math.min(widthRatio, heightRatio); 
+
+                const finalImgWidth = imgWidth * ratio;
+
+                let currentY = 0; 
+                while(currentY < canvas.height) { 
+                    let sliceHeight = Math.min(canvas.height - currentY, (usableHeight / ratio) ); 
+                    
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = canvas.width; 
+                    tempCanvas.height = sliceHeight;
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCtx.drawImage(canvas, 0, currentY, canvas.width, sliceHeight, 0, 0, canvas.width, sliceHeight);
+                    const pageImgData = tempCanvas.toDataURL('image/png', 0.95);
+
+                    if (currentY > 0) pdf.addPage('a4', 'portrait'); 
+                    pdf.addImage(pageImgData, 'PNG', margin, margin, finalImgWidth, sliceHeight * ratio );
+                    currentY += sliceHeight; 
+                }
+
+                buttonsToHide.forEach(btn => btn.style.visibility = 'visible'); 
+                toggleInputsToStatic(false); 
+
+                const formNo = getFullFormNo() || "MRF_Form"; 
+                pdf.save(`${formNo.replace(/[^a-z0-9_.-]/gi, '_')}.pdf`); 
+            }).catch(err => {
+                console.error("Error during PDF export:", err);
+                buttonsToHide.forEach(btn => btn.style.visibility = 'visible'); 
+                toggleInputsToStatic(false); 
+                alert("Error generating PDF. Please check the console for details.");
+            });
+        }
+
+
+        /**
+         * Saves the current form data to the server.
+         */
+        async function saveDataToServer() {
+            const dataToSave = {
+                header: {}, tableRows: [], footerSignatories: {}
+            };
+
+            const headerIds = ['projectNumber', 'projectName', 'client', 'siteLocation', 'projectPhase', 'mrfDate'];
+            headerIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) { 
+                    if (element.tagName === 'SELECT') { dataToSave.header[id] = element.value;  } 
+                    else { dataToSave.header[id] = element.value; }
+                }
+            });
+            dataToSave.header.formNo = getFullFormNo();
+
+
+            Array.from(document.getElementById('mrfTableBody').rows).forEach(tr => {
+                const inputs = tr.querySelectorAll('input');
+                dataToSave.tableRows.push({
+                    values: { 
+                        itemNo: inputs[0].value, partNo: inputs[1].value, brandName: inputs[2].value, 
+                        description: inputs[3].value, qty: inputs[4].value, uom: inputs[5].value, 
+                        installDate: inputs[6].value, remarks: inputs[7].value
+                    }
+                });
+            });
+
+            ['footerPreparedByName', 'footerPreparedByDesignation', 'footerApprovedByName', 'footerApprovedByDesignation', 'footerNotedByName', 'footerNotedByDesignation']
+                .forEach(id => dataToSave.footerSignatories[id] = document.getElementById(id)?.value);
+
+            console.log("Data to save:", JSON.stringify(dataToSave, null, 2)); 
+            const formNoPrefix = document.getElementById('formNoPrefix')?.textContent || "";
+            const formNoSuffixValue = document.getElementById('formNoSuffix')?.value.trim() || "";
+
+            if (!formNoSuffixValue) {
+                 alert("Form No. suffix is required. Please enter a sequence number.");
+                 return;
+            }
+            if (formNoPrefix === "PROJECT-MRF-" && formNoSuffixValue === "001") { 
+                alert("Please select a project to generate a valid Form No. prefix, or edit the suffix if this is a generic MRF.");
+                return;
+            }
+             if (!dataToSave.header.formNo || dataToSave.header.formNo.trim() === "" || dataToSave.header.formNo === "PROJECT-MRF-001") {
+                if (formNoPrefix === "PROJECT-MRF-" && formNoSuffixValue === "001") {
+                     alert("Form No. appears to be a placeholder. Please select a project or ensure the suffix is not the default '001' for a generic MRF.");
+                     return;
+                }
+            }
+
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/mrf`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', },
+                    body: JSON.stringify(dataToSave),
+                });
+                const result = await response.json();
+                if (response.ok) { alert(`MRF saved successfully! Form No: ${result.form_no}`); } 
+                else { alert(`Error saving MRF: ${result.error} - ${result.details || ''}`); }
+            } catch (error) {
+                console.error("Error saving MRF to server:", error);
+                alert("Failed to connect to the server to save MRF. Ensure the backend is running and you are logged in.");
+            }
+        }
+
+        /**
+         * Loads MRF data from the server by form number.
+         */
+        async function loadMrfDataFromServer(formNoToLoad) {
+            if (!formNoToLoad) { alert("Please enter a Form No. to load."); return; }
+            console.log(`Loading MRF: ${formNoToLoad} from ${API_BASE_URL}/mrf/${formNoToLoad}`);
+            try {
+                const response = await fetch(`${API_BASE_URL}/mrf/${formNoToLoad}`);
+                if (!response.ok) {
+                    const errorData = await response.json(); 
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'MRF not found or server error'}`);
+                }
+                const mrfData = await response.json();
+                populateFormWithData(mrfData); 
+                document.getElementById('loadMrfModal').classList.add('hidden'); 
+            } catch (error) {
+                console.error("Could not load MRF:", error);
+                alert(`Error loading MRF: ${error.message}`);
+            }
+        }
+        
+        /**
+         * Populates the entire form with data loaded from the server.
+         */
+        function populateFormWithData(data) {
+            if (!data) return;
+            let loadedFullFormNo = null; 
+            let projectNumberForFormNo = ""; 
+
+            if (data.header) {
+                if (data.header.formNo) {
+                    loadedFullFormNo = data.header.formNo;
+                }
+                projectNumberForFormNo = data.header.projectNumber || ""; // Use projectNumber from header if available
+
+                for (const id in data.header) {
+                    if (id === 'formNo') continue; 
+
+                    const el = document.getElementById(id);
+                    if (el) { 
+                        el.value = data.header[id] !== undefined && data.header[id] !== null ? data.header[id] : ""; 
+                        if (id === 'projectName' && el.tagName === 'SELECT') {
+                            let optionExists = Array.from(el.options).some(opt => opt.value === data.header[id]);
+                            if (!optionExists && data.header[id]) { 
+                                const tempOption = document.createElement('option');
+                                tempOption.value = data.header[id];
+                                tempOption.textContent = data.header[id];
+                                el.appendChild(tempOption);
+                            }
+                            el.value = data.header[id]; 
+                            // Pass the potentially missing projectNumber and client as well
+                            populateProjectDetails(data.header[id], data.header.projectNumber, data.header.client, loadedFullFormNo); 
+                        }
+                    }
+                }
+                
+                const projectNameFromForm = document.getElementById('projectName').value;
+                if (!projectNameFromForm && loadedFullFormNo) { 
+                     generateAndDisplayFormNo(projectNumberForFormNo, loadedFullFormNo);
+                } else if (loadedFullFormNo && (getFullFormNo() !== loadedFullFormNo)) {
+                     generateAndDisplayFormNo(projectNumberForFormNo, loadedFullFormNo);
+                } else if (!loadedFullFormNo) { // If formNo wasn't in header, generate default
+                    generateAndDisplayFormNo(projectNumberForFormNo);
+                }
+
+            } else if (data.formNo) { // Fallback if data.header is missing but data.formNo exists (less ideal)
+                 generateAndDisplayFormNo(document.getElementById('projectNumber').value, data.formNo);
+            }
+            
+            const tableBody = document.getElementById('mrfTableBody');
+            tableBody.innerHTML = ''; 
+            if (data.tableRows && Array.isArray(data.tableRows)) {
+                if (data.tableRows.length > 0) {
+                    data.tableRows.forEach(rowData => {
+                        if (rowData && rowData.values) { 
+                           addMrfRow(rowData); 
+                        } else {
+                            console.warn("Skipping a row in tableRows due to missing 'values':", rowData);
+                        }
+                    });
+                } else {
+                    addMrfRow(); // Add a default row if tableRows is empty
+                }
+            } else {
+                 console.warn("data.tableRows is missing or not an array. Adding a default row.");
+                 addMrfRow(); // Add a default row if tableRows is missing
+            }
+
+
+            if (data.footerSignatories) {
+                for (const id in data.footerSignatories) {
+                    const el = document.getElementById(id);
+                    if (el) el.value = data.footerSignatories[id] !== undefined && data.footerSignatories[id] !== null ? data.footerSignatories[id] : "";
+                }
+            }
+        }
+
+        const loadMrfModal = document.getElementById('loadMrfModal');
+        const mrfListSelect = document.getElementById('mrfList');
+        const confirmLoadMrfBtn = document.getElementById('confirmLoadMrf');
+        const closeLoadModalBtn = document.getElementById('closeLoadModal');
+        const loadMrfByFormNoInput = document.getElementById('loadMrfByFormNo');
+        const loadByFormNoBtn = document.getElementById('loadByFormNoBtn');
+
+        async function showLoadModal() {
+            loadMrfModal.classList.remove('hidden');
+            try {
+                const response = await fetch(`${API_BASE_URL}/mrfs`); 
+                if (!response.ok) throw new Error('Failed to fetch MRF list');
+                const mrfs = await response.json();
+                mrfListSelect.innerHTML = '<option value="">Select MRF from list</option>'; 
+                mrfs.forEach(mrf => {
+                    const option = document.createElement('option');
+                    option.value = mrf.form_no; 
+                    option.textContent = `${mrf.form_no} - ${mrf.project_name || 'N/A'} (${mrf.mrf_date || 'N/A'})`;
+                    mrfListSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error populating MRF list:", error);
+                mrfListSelect.innerHTML = '<option value="">Could not load MRF list</option>'; 
+            }
+        }
+
+        if(confirmLoadMrfBtn) {
+            confirmLoadMrfBtn.addEventListener('click', () => {
+                const selectedFormNo = mrfListSelect.value;
+                if (selectedFormNo) { loadMrfDataFromServer(selectedFormNo); } 
+                else { alert("Please select an MRF from the list."); }
+            });
+        }
+        if(loadByFormNoBtn){
+            loadByFormNoBtn.addEventListener('click', () => {
+                const formNoFromInput = loadMrfByFormNoInput.value.trim();
+                 if (formNoFromInput) { loadMrfDataFromServer(formNoFromInput); } 
+                 else { alert("Please enter a Form No. to load."); }
+            });
+        }
+        if(closeLoadModalBtn) {
+            closeLoadModalBtn.addEventListener('click', () => { loadMrfModal.classList.add('hidden'); });
+        }
+        if(loadMrfModal){
+            loadMrfModal.addEventListener('click', (event) => {
+                if (event.target === loadMrfModal) { loadMrfModal.classList.add('hidden'); }
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.mrf-logo').forEach(logoImg => {
+                logoImg.onerror = () => {
+                    logoImg.style.display = 'none'; 
+                    const fallback = logoImg.parentElement.querySelector('.logo-fallback');
+                    if (fallback) fallback.style.display = 'flex'; 
+                    logoImg.parentElement.querySelectorAll('.mrf-logo').forEach(otherLogo => {
+                        if (otherLogo !== logoImg && (otherLogo.classList.contains('dark:hidden') || otherLogo.classList.contains('hidden'))) {
+                        } else if (otherLogo !== logoImg) {
+                            otherLogo.style.display = 'none'; 
+                        }
+                    });
+                };
+            });
+            document.querySelectorAll('.mrf-logo.hidden.dark\\:block').forEach(darkLogo => darkLogo.style.display = 'none');
+            document.querySelectorAll('.mrf-logo.block.dark\\:hidden').forEach(lightLogo => lightLogo.style.display = 'block');
+
+            fetchProjects(); 
+            addMrfRow(); 
+            
+            const mrfDateInput = document.getElementById('mrfDate');
+            if (mrfDateInput && !mrfDateInput.value) {
+                mrfDateInput.value = new Date().toISOString().split('T')[0];
+            }
+            if (!new URLSearchParams(window.location.search).has('project_name')) {
+                 document.getElementById('projectPhase').value = "Execution";
+                 generateAndDisplayFormNo(""); 
+            }
+        });
+    </script>
+
+</body>
+</html>

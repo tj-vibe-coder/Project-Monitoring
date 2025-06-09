@@ -1,0 +1,378 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MRF Items Log</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Arial+Narrow:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Arial Narrow', 'Inter', sans-serif;
+            background-color: #f4f7f6;
+        }
+
+        .container {
+            max-width: 95%;
+            margin: 1.5rem auto;
+            padding: 1.5rem;
+            background-color: #ffffff;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 0.5rem 0.4rem;
+            text-align: left;
+            border: 1px solid #e2e8f0;
+            font-size: 0.75rem; /* Increased for better readability */
+            vertical-align: middle;
+        }
+
+        th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #334155;
+            white-space: nowrap;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        .action-button {
+            background-color: #2563eb; /* Blue */
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.375rem;
+            font-size: 0.7rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-right: 0.25rem; /* Add some space between buttons */
+        }
+
+            .action-button:hover {
+                background-color: #1d4ed8; /* Darker Blue */
+            }
+
+            .action-button:disabled {
+                background-color: #9ca3af;
+                cursor: not-allowed;
+            }
+
+        .delete-button {
+            background-color: #ef4444; /* Red */
+        }
+
+            .delete-button:hover {
+                background-color: #dc2626; /* Darker Red */
+            }
+
+        .status-select {
+            padding: 0.3rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+            min-width: 120px; /* Adjusted for longer status names */
+        }
+
+        .date-input {
+            padding: 0.3rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.25rem;
+            font-size: 0.7rem;
+        }
+
+        .filter-container {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: #f9fafb;
+            border-radius: 0.375rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+            .filter-container label {
+                font-weight: 500;
+                font-size: 0.8rem;
+                color: #4b5563;
+            }
+
+            .filter-container input, .filter-container select {
+                padding: 0.4rem;
+                border: 1px solid #d1d5db;
+                border-radius: 0.25rem;
+                font-size: 0.8rem;
+            }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container">
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-gray-700 text-center">Material Request Form - Items Log</h1>
+        </header>
+
+        <div class="filter-container">
+            <div>
+                <label for="filterFormNo">Form No.:</label>
+                <input type="text" id="filterFormNo" placeholder="Filter by Form No.">
+            </div>
+            <div>
+                <label for="filterProjectName">Project Name:</label>
+                <input type="text" id="filterProjectName" placeholder="Filter by Project">
+            </div>
+            <div>
+                <label for="filterStatus">Status:</label>
+                <select id="filterStatus">
+                    <option value="">All Statuses</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Pending Approval">Pending Approval</option>
+                    <option value="For Purchase Order">For Purchase Order</option>
+                    <option value="Awaiting Delivery">Awaiting Delivery</option>
+                    <option value="Delivered to CMR">Delivered to CMR</option>
+                    <option value="Delivered to Site">Delivered to Site</option>
+                    <option value="Cancelled">Cancelled</option>
+                    <option value="On Hold">On Hold</option>
+                </select>
+            </div>
+            <button onclick="applyFilters()" class="action-button">Apply Filters</button>
+            <button onclick="resetFilters()" class="action-button bg-gray-500 hover:bg-gray-600">Reset Filters</button>
+        </div>
+
+        <main>
+            <div class="table-responsive">
+                <table id="mrfItemsLogTable">
+                    <thead>
+                        <tr>
+                            <th>MRF No.</th>
+                            <th>Project Name</th>
+                            <th>MRF Date</th>
+                            <th>Item</th>
+                            <th>Part Number</th>
+                            <th>Brand</th>
+                            <th>Description</th>
+                            <th class="text-right">Qty</th>
+                            <th>UOM</th>
+                            <th>Target Install</th>
+                            <th>Status</th>
+                            <th>Actual Delivery</th>
+                            <th>Remarks</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mrfItemsLogTableBody">
+                    </tbody>
+                </table>
+            </div>
+            <p id="loadingMessage" class="text-center mt-4">Loading items...</p>
+        </main>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api';
+        let allMrfItems = []; // To store all fetched items for client-side filtering
+        const itemStatuses = [
+            "Processing",
+            "Pending Approval",
+            "For Purchase Order",
+            "Awaiting Delivery",
+            "Delivered to CMR",
+            "Delivered to Site",
+            "Cancelled",
+            "On Hold"
+        ];
+
+
+        // Fetches all MRF items and populates the table
+        async function fetchAndDisplayMrfItems() {
+            const tableBody = document.getElementById('mrfItemsLogTableBody');
+            const loadingMessage = document.getElementById('loadingMessage');
+            tableBody.innerHTML = ''; // Clear existing rows
+            loadingMessage.textContent = 'Loading items...';
+            loadingMessage.style.display = 'block';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/mrf/items/log`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                allMrfItems = await response.json();
+                loadingMessage.style.display = 'none';
+                if (allMrfItems.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="14" class="text-center py-4">No MRF items found.</td></tr>';
+                    return;
+                }
+                renderTable(allMrfItems);
+            } catch (error) {
+                console.error("Could not fetch MRF items log:", error);
+                loadingMessage.textContent = 'Error loading items.';
+                tableBody.innerHTML = `<tr><td colspan="14" class="text-center py-4 text-red-600">Error loading items: ${error.message}</td></tr>`;
+            }
+        }
+
+        // Renders the table with the given items
+        function renderTable(itemsToRender) {
+            const tableBody = document.getElementById('mrfItemsLogTableBody');
+            tableBody.innerHTML = ''; // Clear existing rows
+
+            if (itemsToRender.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="14" class="text-center py-4">No items match your filters.</td></tr>';
+                return;
+            }
+
+            itemsToRender.forEach(item => {
+                const row = tableBody.insertRow();
+                row.insertCell().textContent = item.form_no || 'N/A';
+                row.insertCell().textContent = item.project_name || 'N/A';
+                row.insertCell().textContent = item.mrf_date ? new Date(item.mrf_date + 'T00:00:00').toLocaleDateString() : 'N/A';
+                row.insertCell().textContent = item.item_no || '';
+                row.insertCell().textContent = item.part_no || '';
+                row.insertCell().textContent = item.brand_name || '';
+                row.insertCell().textContent = item.description || '';
+                row.insertCell().textContent = item.qty || '0';
+                row.cells[7].classList.add('text-right');
+                row.insertCell().textContent = item.uom || '';
+                row.insertCell().textContent = item.install_date ? new Date(item.install_date + 'T00:00:00').toLocaleDateString() : '';
+
+                const statusCell = row.insertCell();
+                const statusSelect = document.createElement('select');
+                statusSelect.className = 'status-select';
+                statusSelect.dataset.itemId = item.id;
+                itemStatuses.forEach(s => { // Use the defined itemStatuses array
+                    const option = document.createElement('option');
+                    option.value = s;
+                    option.textContent = s;
+                    if (s === (item.status || "Processing")) { // Default to "Processing" if status is null
+                        option.selected = true;
+                    }
+                    statusSelect.appendChild(option);
+                });
+                statusCell.appendChild(statusSelect);
+
+                const deliveryDateCell = row.insertCell();
+                const deliveryDateInput = document.createElement('input');
+                deliveryDateInput.type = 'date';
+                deliveryDateInput.className = 'date-input';
+                deliveryDateInput.dataset.itemId = item.id;
+                deliveryDateInput.value = item.actual_delivery_date || '';
+                deliveryDateCell.appendChild(deliveryDateInput);
+
+                row.insertCell().textContent = item.remarks || '';
+
+                const actionCell = row.insertCell();
+
+                const updateButton = document.createElement('button');
+                updateButton.textContent = 'Update';
+                updateButton.className = 'action-button';
+                updateButton.onclick = () => updateItemStatus(item.id, statusSelect.value, deliveryDateInput.value);
+                actionCell.appendChild(updateButton);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.className = 'action-button delete-button';
+                deleteButton.onclick = () => deleteMrfItem(item.id, item.form_no, item.item_no);
+                actionCell.appendChild(deleteButton);
+            });
+        }
+
+        function applyFilters() {
+            const filterFormNo = document.getElementById('filterFormNo').value.toLowerCase();
+            const filterProjectName = document.getElementById('filterProjectName').value.toLowerCase();
+            const filterStatus = document.getElementById('filterStatus').value;
+
+            const filteredItems = allMrfItems.filter(item => {
+                const formNoMatch = !filterFormNo || (item.form_no && item.form_no.toLowerCase().includes(filterFormNo));
+                const projectNameMatch = !filterProjectName || (item.project_name && item.project_name.toLowerCase().includes(filterProjectName));
+                const statusMatch = !filterStatus || ((item.status || "Processing") === filterStatus); // Default to "Processing" for filter matching
+                return formNoMatch && projectNameMatch && statusMatch;
+            });
+            renderTable(filteredItems);
+        }
+
+        function resetFilters() {
+            document.getElementById('filterFormNo').value = '';
+            document.getElementById('filterProjectName').value = '';
+            document.getElementById('filterStatus').value = '';
+            renderTable(allMrfItems);
+        }
+
+        async function updateItemStatus(itemId, newStatus, newDeliveryDate) {
+            const payload = {};
+            if (newStatus) {
+                payload.status = newStatus;
+            }
+            if (newDeliveryDate !== undefined) {
+                payload.actual_delivery_date = newDeliveryDate === '' ? null : newDeliveryDate;
+            }
+
+            if (Object.keys(payload).length === 0) {
+                alert("No changes to update.");
+                return;
+            }
+
+            console.log(`Updating item ${itemId} with:`, payload);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/mrf/item/${itemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload),
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Failed to update'}`);
+                }
+                const result = await response.json();
+                alert(result.message || "Item updated successfully!");
+                const itemIndex = allMrfItems.findIndex(i => i.id === itemId);
+                if (itemIndex > -1 && result.item) {
+                    allMrfItems[itemIndex].status = result.item.status;
+                    allMrfItems[itemIndex].actual_delivery_date = result.item.actual_delivery_date;
+                }
+                applyFilters();
+            } catch (error) {
+                console.error(`Error updating MRF item ${itemId}:`, error);
+                alert(`Error updating item: ${error.message}`);
+            }
+        }
+
+        async function deleteMrfItem(itemId, formNo, itemNo) {
+            const confirmation = confirm(`Are you sure you want to delete Item No. ${itemNo || '(no item #)'} from MRF ${formNo}? This action cannot be undone.`);
+            if (!confirmation) {
+                return;
+            }
+
+            console.log(`Attempting to delete MRF item ID: ${itemId}`);
+            try {
+                const response = await fetch(`${API_BASE_URL}/mrf/item/${itemId}`, {
+                    method: 'DELETE',
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: "Failed to parse error response." }));
+                    throw new Error(`HTTP error! status: ${response.status} - ${errorData.error || 'Failed to delete item'}`);
+                }
+                const result = await response.json();
+                alert(result.message || "Item deleted successfully!");
+
+                allMrfItems = allMrfItems.filter(item => item.id !== itemId);
+                applyFilters();
+
+            } catch (error) {
+                console.error(`Error deleting MRF item ${itemId}:`, error);
+                alert(`Error deleting item: ${error.message}`);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchAndDisplayMrfItems);
+    </script>
+</body>
+</html>

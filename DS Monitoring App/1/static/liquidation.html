@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquidation - DS Project Monitoring</title>
+    <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        /* --- START: CLEANED AND CORRECTED STYLESHEET --- */
+
+        /* 1. Base font settings */
+        body, .pdf-export-area, input, select, button, table, th, td, label {
+            font-family: Arial, Helvetica, sans-serif !important;
+            font-size: 11pt !important;
+        }
+
+        /* 2. Main container */
+        .pdf-export-area { 
+            background: white; 
+            padding: 30px; 
+            max-width: 1122px; 
+            margin: 0 auto; 
+            min-height: 794px; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        /* 3. Top "underline" inputs */
+        .form-underline-input {
+            background: transparent !important;
+            color: #000 !important;
+            font-weight: 700 !important;
+            border: none !important;
+            border-bottom: 1.5px solid #333 !important;
+            outline: none !important;
+            box-shadow: none !important;
+            padding: 2px !important;
+            border-radius: 0 !important;
+        }
+        
+        /* 4. Main table styling */
+        #liquidation-table {
+            table-layout: fixed;
+            width: 100%;
+            border-collapse: collapse; /* Crucial for clean borders */
+        }
+
+        #liquidation-table th, #liquidation-table td { 
+            border: 1px solid #000; /* Thin black border */
+            padding: 5px 8px;
+            word-wrap: break-word; /* Allow content to wrap */
+        }
+        #liquidation-table th {
+            background-color: #f2f2f2; /* Light grey header */
+            font-weight: 700;
+            text-align: center;
+        }
+
+        /* Set column widths */
+        #liquidation-table th:nth-child(1), #liquidation-table td:nth-child(1) { width: 4%; }  /* No. */
+        #liquidation-table th:nth-child(2), #liquidation-table td:nth-child(2) { width: 10%; } /* Date */
+        #liquidation-table th:nth-child(3), #liquidation-table td:nth-child(3) { width: 12%; } /* Category */
+        #liquidation-table th:nth-child(4), #liquidation-table td:nth-child(4) { width: 24%; } /* Project Name */
+        #liquidation-table th:nth-child(5), #liquidation-table td:nth-child(5) { width: 10%; } /* Project No. */
+        #liquidation-table th:nth-child(6), #liquidation-table td:nth-child(6) { width: 14%; } /* Particulars */
+        #liquidation-table th:nth-child(7), #liquidation-table td:nth-child(7) { width: 10%; } /* Amount */
+        #liquidation-table th:nth-child(8), #liquidation-table td:nth-child(8) { width: 12%; } /* Remarks */
+        #liquidation-table th:nth-child(9), #liquidation-table td:nth-child(9) { width: 4%; }  /* Remove button */
+
+        #liquidation-table input, #liquidation-table select {
+            border: 1px solid #888 !important;
+            padding: 4px 6px !important;
+            width: 100%;
+        }
+       
+        /* 5. Hide elements during printing/PDF export and handle pagination */
+        @media print { 
+            .no-print { display: none !important; } 
+            
+            /* Ensure header repeats on each page */
+            #liquidation-table thead {
+                display: table-header-group;
+            }
+
+            /* Create a page break after every 20 rows */
+            #liquidation-table tbody tr:nth-child(20n) {
+                page-break-after: always;
+            }
+        }
+        .no-print-export { display: none !important; }
+        
+        /* --- END: CLEANED STYLESHEET --- */
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="max-w-5xl mx-auto py-2">
+        <div class="pdf-export-area" id="liquidation-pdf-area">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-2">
+                <img src="/static/CMRP Logo Dark.svg" alt="CMRP Logo" class="h-10 w-auto" style="max-height:40px;">
+                <h2 class="font-bold tracking-wide leading-tight text-center flex-grow" style="font-size: 1.3em;">LIQUIDATION FORM</h2>
+                <div style="width:100px;"></div>
+            </div>
+
+            <!-- Employee Info Section - NEW LAYOUT -->
+            <div class="mb-4">
+                <div class="flex justify-between items-baseline mb-1">
+                    <div class="flex items-baseline w-1/2">
+                        <label for="employee-name" class="font-bold whitespace-nowrap mr-2">Employee Name:</label>
+                        <input type="text" id="employee-name" class="form-underline-input w-full" autocomplete="off">
+                    </div>
+                    <div class="flex items-baseline w-1/3">
+                        <label for="submission-date" class="font-bold whitespace-nowrap mr-2">Date of Submission:</label>
+                        <input type="date" id="submission-date" class="form-underline-input w-full" autocomplete="off">
+                    </div>
+                </div>
+                <div class="flex items-baseline w-1/2">
+                    <label for="employee-number" class="font-bold whitespace-nowrap mr-2">Employee Number:</label>
+                    <input type="text" id="employee-number" class="form-underline-input w-full" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Liquidation Form -->
+            <div class="liquidation-table-container flex-grow">
+                <table id="liquidation-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Date</th>
+                            <th>Category</th>
+                            <th>Project Name</th>
+                            <th>Project No.</th>
+                            <th>Particulars</th>
+                            <th>Amount</th>
+                            <th>Remarks</th>
+                            <th class="no-print"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="liquidation-table-body">
+                        <!-- Rows will be added here by JS -->
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="6" class="text-right font-bold bg-gray-100">TOTAL</td>
+                            <td class="font-bold bg-yellow-200 text-right" id="liquidation-total">0.00</td>
+                            <td colspan="2"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-8 pt-4 no-print">
+                <div class="flex gap-2 mb-4">
+                    <button type="button" id="add-row" class="bg-blue-500 text-white px-4 py-2 rounded">Add Row</button>
+                    <button type="button" id="export-pdf" class="bg-purple-600 text-white px-4 py-2 rounded">Export to PDF</button>
+                    <button type="button" id="save-db" class="bg-green-600 text-white px-4 py-2 rounded">Save to DB</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const tableBody = document.getElementById('liquidation-table-body');
+
+            function addRow() {
+                const tr = document.createElement('tr');
+                const rowCount = tableBody.querySelectorAll('tr').length + 1;
+                tr.innerHTML = `
+                    <td class="text-center align-middle row-number">${rowCount}</td>
+                    <td><input type="date" name="date[]" required></td>
+                    <td>
+                        <select name="category[]" required>
+                            <option value="">Select</option>
+                            <option value="Entertainment">Entertainment</option>
+                            <option value="Transportation">Transportation</option>
+                            <option value="Accomodation">Accomodation</option>
+                            <option value="Direct Labor">Direct Labor</option>
+                            <option value="Tools/Direct Materials">Tools/Direct Materials</option>
+                        </select>
+                    </td>
+                    <td><input type="text" name="project_name[]" placeholder="Project Name" required></td>
+                    <td><input type="text" name="project_no[]" placeholder="Project No." required></td>
+                    <td><input type="text" name="particulars[]" placeholder="Particulars" required></td>
+                    <td><input type="number" name="amount[]" class="amount-input text-right" placeholder="0.00" min="0" step="0.01" required></td>
+                    <td><input type="text" name="remarks[]" placeholder="Remarks"></td>
+                    <td class="text-center align-middle no-print"><button type="button" class="text-red-500 font-bold remove-row">X</button></td>
+                `;
+                tableBody.appendChild(tr);
+            }
+
+            function updateTotal() {
+                let total = 0;
+                document.querySelectorAll('.amount-input').forEach(input => {
+                    const val = parseFloat(input.value);
+                    if (!isNaN(val)) total += val;
+                });
+                document.getElementById('liquidation-total').textContent = total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+
+            // Event Listeners
+            document.getElementById('add-row').addEventListener('click', addRow);
+
+            tableBody.addEventListener('click', function(e) {
+                if (e.target.classList.contains('remove-row')) {
+                    if (tableBody.querySelectorAll('tr').length > 1) {
+                        e.target.closest('tr').remove();
+                         // Update row numbers after deletion
+                        tableBody.querySelectorAll('.row-number').forEach((td, idx) => {
+                            td.textContent = idx + 1;
+                        });
+                        updateTotal();
+                    }
+                }
+            });
+
+            tableBody.addEventListener('input', function(e) {
+                if (e.target.classList.contains('amount-input')) {
+                    updateTotal();
+                }
+            });
+            
+            // --- PDF EXPORT LOGIC ---
+            document.getElementById('export-pdf').addEventListener('click', function() {
+                const noPrintEls = document.querySelectorAll('.no-print');
+                const pdfArea = document.getElementById('liquidation-pdf-area');
+
+                // Add a temporary class to hide buttons during export
+                noPrintEls.forEach(el => el.classList.add('no-print-export'));
+                
+                // Use html2canvas and jsPDF for PDF export
+                html2canvas(pdfArea, { scale: 2, backgroundColor: '#fff' }).then(canvas => {
+                    const imgData = canvas.toDataURL('image/png');
+                    const pdf = new window.jspdf.jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+                    const margin = 30;
+                    const pageWidth = pdf.internal.pageSize.getWidth();
+                    const pageHeight = pdf.internal.pageSize.getHeight();
+                    const imgWidth = pageWidth - margin * 2;
+                    const imgHeight = canvas.height * imgWidth / canvas.width;
+                    const y = (pageHeight - imgHeight) / 2;
+                    pdf.addImage(imgData, 'PNG', margin, y, imgWidth, imgHeight);
+                    pdf.save('liquidation_form.pdf');
+                    // Restore elements after export
+                    noPrintEls.forEach(el => el.classList.remove('no-print-export'));
+                });
+            });
+
+            // --- SAVE TO DB LOGIC ---
+            document.getElementById('save-db').addEventListener('click', function() {
+                // Gather form data
+                const employeeName = document.getElementById('employee-name').value.trim();
+                const employeeNumber = document.getElementById('employee-number').value.trim();
+                const submissionDate = document.getElementById('submission-date').value;
+                const rows = Array.from(document.querySelectorAll('#liquidation-table-body tr')).map(tr => {
+                    const tds = tr.querySelectorAll('td');
+                    return {
+                        date: tds[1].querySelector('input')?.value || '',
+                        category: tds[2].querySelector('select')?.value || '',
+                        project_name: tds[3].querySelector('input')?.value || '',
+                        project_no: tds[4].querySelector('input')?.value || '',
+                        particulars: tds[5].querySelector('input')?.value || '',
+                        amount: tds[6].querySelector('input')?.value || '',
+                        remarks: tds[7].querySelector('input')?.value || ''
+                    };
+                });
+                let total = 0;
+                rows.forEach(r => {
+                    const val = parseFloat(r.amount);
+                    if (!isNaN(val)) total += val;
+                });
+                const payload = {
+                    employee_name: employeeName,
+                    employee_number: employeeNumber,
+                    submission_date: submissionDate,
+                    items: rows,
+                    total_liquidation: total
+                };
+                // POST to backend
+                fetch('/api/liquidation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                .then(resp => resp.json())
+                .then(result => {
+                    // Redirect to log page with total
+                    window.location.href = '/liquidation-log?total=' + encodeURIComponent(total.toFixed(2));
+                })
+                .catch(e => {
+                    alert('Error saving liquidation: ' + (e.message || e));
+                });
+            });
+
+            // Add one row to start
+            addRow();
+        });
+    </script>
+</body>
+</html>
